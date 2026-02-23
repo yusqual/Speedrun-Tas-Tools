@@ -1603,14 +1603,13 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishv
 										wishvel[0] = velocity[0];
 										wishvel[1] = velocity[1];
 										wishvel[2] = velocity[2];
+									// STR_PrintMessageToAllClients("MOVETYPE_LADDER");
 									}
 									else
 									{
 										//DispatchKeyValueVector(client, "origin", pos);
-										TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
-										wishvel[0] = velocity[0];
-										wishvel[1] = velocity[1];
-										wishvel[2] = velocity[2];
+										TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
+									// STR_PrintMessageToAllClients("No MOVETYPE_LADDER");
 									}
 									DispatchKeyValueVector(client, "origin", pos);
 									//STR_PrintMessageToAllClients("Client");
@@ -1621,10 +1620,12 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishv
 						else
 						{
 							//bot会执行这里的代码
-							TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
-							wishvel[0] = velocity[0];
-							wishvel[1] = velocity[1];
-							wishvel[2] = velocity[2];
+							TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
+							if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER) {
+								wishvel[0] = velocity[0];
+								wishvel[1] = velocity[1];
+								wishvel[2] = velocity[2];
+							}
 							DispatchKeyValueVector(client, "origin", pos);
 							buttons = frameinfo[FRAME_Buttons];
 							//STR_PrintMessageToAllClients("Bot");
