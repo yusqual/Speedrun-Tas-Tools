@@ -29,8 +29,8 @@
 *	2021/06/12	1.加入电击器Trick调试功能，控制台str_deftrick指令控制，代替原脚本坐标映射，可直接插件完成
 *	2021/08/08	1.删除电击器Trick的坐标映射计算代码，通过脚本计算或者通过地图info_landmark坐标直接计算并通过模板设置控制台变量:str_posmap_x,str_posmap_y,str_posmap_z
 *	2023/01/08	1.加入一个bool开关，用于控制是否在到底情况下继续播放replay，默认是关闭。
-*
 *	2025/10/16	1.加入一个bool开关，用于控制是否仅设置速度，默认是关闭。
+* 	2026/02/23	1.尝试修复爬梯动作问题.
 *                        .::::.
 *                      .::::::::.
 *                     :::::::::::
@@ -54,6 +54,8 @@
 *
 *
 */
+
+// 2025/10/16 b_OnlySetVel: 仅设置速度
 
 #pragma semicolon 1
 
@@ -174,7 +176,7 @@ public Plugin myinfo =
 	//author = "Jonah_xia(Owned by DBGaming)",
 	author = "DBGaming Team",
 	description = "求生之路2速跑的TAS工具.",
-	version = "2.2.06121",
+	version = "2.2.06122",
 	url = ""
 };
 
@@ -1593,11 +1595,14 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishv
 								{
 									//TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
 									//DispatchKeyValueVector(client, "origin", pos);
-									
-									if(GetEntityMoveType(client) == MOVETYPE_LADDER) 
+
+									if(frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
 									{
 										buttons = frameinfo_action[FRAME_Buttons];
 										TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
+										wishvel[0] = velocity[0];
+										wishvel[1] = velocity[1];
+										wishvel[2] = velocity[2];
 									}
 									else
 									{
@@ -1614,6 +1619,11 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishv
 						{
 							//bot会执行这里的代码
 							TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
+							if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER) {
+								wishvel[0] = velocity[0];
+								wishvel[1] = velocity[1];
+								wishvel[2] = velocity[2];
+							}
 							DispatchKeyValueVector(client, "origin", pos);
 							buttons = frameinfo[FRAME_Buttons];
 							//STR_PrintMessageToAllClients("Bot");
