@@ -29,6 +29,8 @@
 *	2021/06/12	1.加入电击器Trick调试功能，控制台str_deftrick指令控制，代替原脚本坐标映射，可直接插件完成
 *	2021/08/08	1.删除电击器Trick的坐标映射计算代码，通过脚本计算或者通过地图info_landmark坐标直接计算并通过模板设置控制台变量:str_posmap_x,str_posmap_y,str_posmap_z
 *	2023/01/08	1.加入一个bool开关，用于控制是否在到底情况下继续播放replay，默认是关闭。
+*
+*	2025/10/16	1.加入一个bool开关，用于控制是否仅设置速度，默认是关闭。
 *                        .::::.
 *                      .::::::::.
 *                     :::::::::::
@@ -130,6 +132,7 @@ new Handle:g_ConVar_PosMap_x;									//电击器Trick映射坐标x分量
 new Handle:g_ConVar_PosMap_y;									//电击器Trick映射坐标y分量
 new Handle:g_ConVar_PosMap_z;									//电击器Trick映射坐标z分量
 
+new Handle:b_OnlySetVel;									//仅设置速度, 不设置位置和视角
 
 
 new const String:g_Items[ITEMS_COUNT][] =
@@ -171,7 +174,7 @@ public Plugin myinfo =
 	//author = "Jonah_xia(Owned by DBGaming)",
 	author = "DBGaming Team",
 	description = "求生之路2速跑的TAS工具.",
-	version = "2.2.0612",
+	version = "2.2.06121",
 	url = ""
 };
 
@@ -228,6 +231,8 @@ public void OnPluginStart()
 	g_ConVar_PosMap_x 			= 		CreateConVar("str_posmap_x", "0.0", "坐标映射x分量.", FCVAR_NOTIFY);
 	g_ConVar_PosMap_y 			= 		CreateConVar("str_posmap_y", "0.0", "坐标映射y分量.", FCVAR_NOTIFY);
 	g_ConVar_PosMap_z 			= 		CreateConVar("str_posmap_z", "0.0", "坐标映射z分量.", FCVAR_NOTIFY);
+
+	b_OnlySetVel 			= 		CreateConVar("str_onlysetvel", "0", "仅设置速度,不设置坐标和视角.", FCVAR_NOTIFY);
 	
 	HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
 	HookEvent("map_transition", OnGameEvent);	
@@ -1439,16 +1444,16 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishv
 					if(ibuttons[client] & IN_DUCK) ClientCommand(client, "+duck");
 					else ClientCommand(client, "-duck");
 					
-					if(ibuttons[client] & IN_FORWARD && GetEntityFlags(client) & FL_ONGROUND) ClientCommand(client, "+forward");
+					if(ibuttons[client] & IN_FORWARD && GetEntityFlags(client) & FL_ONGROUND && !GetConVarBool(b_OnlySetVel)) ClientCommand(client, "+forward");
 					else ClientCommand(client, "-forward");
 					
-					if(ibuttons[client] & IN_BACK && GetEntityFlags(client) & FL_ONGROUND) ClientCommand(client, "+back");
+					if(ibuttons[client] & IN_BACK && GetEntityFlags(client) & FL_ONGROUND && !GetConVarBool(b_OnlySetVel)) ClientCommand(client, "+back");
 					else ClientCommand(client, "-back");
 					
-					if(ibuttons[client] & IN_LEFT) ClientCommand(client, "+left");
+					if((ibuttons[client] & IN_LEFT) && !GetConVarBool(b_OnlySetVel)) ClientCommand(client, "+left");
 					else ClientCommand(client, "-left");
 					
-					if(ibuttons[client] & IN_RIGHT) ClientCommand(client, "+right");
+					if(ibuttons[client] & IN_RIGHT && !GetConVarBool(b_OnlySetVel)) ClientCommand(client, "+right");
 					else ClientCommand(client, "-right");
 					
 					if(ibuttons[client] & IN_ATTACK2) ClientCommand(client, "+attack2");
@@ -1544,6 +1549,11 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishv
 						{	
 							//获取tickcount个tick以后数据
 							int b_buttons = GetClientButtons(client);	
+							if (GetConVarBool(b_OnlySetVel)) {
+								TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
+								DispatchKeyValueVector(client, "origin", pos);
+								i_angsmooth[client] = tickcount;
+							} else 
 							if(b_buttons & IN_ZOOM)
 							{							
 								//TeleportEntity(client, pos, NULL_VECTOR, velocity);
@@ -2433,7 +2443,7 @@ public bool:IsPlayerABot(client)
 
 
 //============================================================
-public void STR_DisplayRingToClient(int client, int sprite, float[3] points, float radius, float lifetime)
+public void STR_DisplayRingToClient(int client, int sprite, float points[3], float radius, float lifetime)
 {
 	TE_SetupBeamRingPoint(points, radius, radius + 5.0, sprite, 0, 0, 0, lifetime, 2.0, 0.0, {255, 0, 255, 255}, 0, 0);
 	//TE_SendToClient(client);
@@ -2445,7 +2455,7 @@ public void STR_DisplayRingToClient(int client, int sprite, float[3] points, flo
 
 
 //STR_DisplayTraceToClient(client, STR_LaserSprite, points, 30.0);
-public void STR_DisplayTraceToClient(int client, int sprite, float[20][3] points, float lifetime, int color[4])
+public void STR_DisplayTraceToClient(int client, int sprite, float points[20][3], float lifetime, int color[4])
 {
 
 	TE_SetupBeamPoints(points[0], points[1], sprite, 0, 0, 0, lifetime, 1.0, 1.0, 5, 0.0, color, 0);
