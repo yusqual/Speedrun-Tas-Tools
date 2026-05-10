@@ -765,3 +765,357 @@ public void STR_PrintMessageToClientSpectators(int client, const char[] format, 
 	}
 }
 */
+
+
+//=============================================================================
+// 以下状态变量从主文件迁移至此处，统一管理
+//=============================================================================
+
+/**
+ * @brief 自由视角平滑过渡递减计数器。
+ * 播放Replay时用于视角平滑插值的tick递减。
+ */
+int g_iAngleSmooth[MAXPLAYERS + 1];
+
+/**
+ * @brief 获取玩家视角平滑计数器。
+ */
+public int Player_GetAngleSmooth(int client)
+{
+	return g_iAngleSmooth[client];
+}
+
+/**
+ * @brief 设置玩家视角平滑计数器。
+ */
+public void Player_SetAngleSmooth(int client, int value)
+{
+	g_iAngleSmooth[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 攻击按键倒计时计数器。
+ * 播放Replay时用于延迟释放+attack命令。
+ */
+int g_iAttackCounter[MAXPLAYERS + 1];
+
+/**
+ * @brief 获取攻击按键倒计数值。
+ */
+public int Player_GetAttackCounter(int client)
+{
+	return g_iAttackCounter[client];
+}
+
+/**
+ * @brief 设置攻击按键倒计数值。
+ */
+public void Player_SetAttackCounter(int client, int value)
+{
+	g_iAttackCounter[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 线性平滑状态标记。
+ * true 时表示正在进行线性位置/角度过渡。
+ */
+bool g_bIsLinearTransition[MAXPLAYERS + 1];
+
+/**
+ * @brief 获取线性平滑状态。
+ */
+public bool Player_GetIsLinearTransition(int client)
+{
+	return g_bIsLinearTransition[client];
+}
+
+/**
+ * @brief 设置线性平滑状态。
+ */
+public void Player_SetIsLinearTransition(int client, bool value)
+{
+	g_bIsLinearTransition[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 线性平滑起始位置。
+ */
+float g_fSmoothStartPos[MAXPLAYERS + 1][3];
+
+public void Player_GetSmoothStartPos(int client, float out[3])
+{
+	out = g_fSmoothStartPos[client];
+}
+
+public void Player_SetSmoothStartPos(int client, const float value[3])
+{
+	g_fSmoothStartPos[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 线性平滑结束位置。
+ */
+float g_fSmoothEndPos[MAXPLAYERS + 1][3];
+
+public void Player_GetSmoothEndPos(int client, float out[3])
+{
+	out = g_fSmoothEndPos[client];
+}
+
+public void Player_SetSmoothEndPos(int client, const float value[3])
+{
+	g_fSmoothEndPos[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 线性平滑起始视角。
+ */
+float g_fSmoothStartAngles[MAXPLAYERS + 1][3];
+
+public void Player_GetSmoothStartAngles(int client, float out[3])
+{
+	out = g_fSmoothStartAngles[client];
+}
+
+public void Player_SetSmoothStartAngles(int client, const float value[3])
+{
+	g_fSmoothStartAngles[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 线性平滑插值输出视角。
+ */
+float g_fSmoothLineAngles[MAXPLAYERS + 1][3];
+
+public void Player_GetSmoothLineAngles(int client, float out[3])
+{
+	out = g_fSmoothLineAngles[client];
+}
+
+public void Player_SetSmoothLineAngles(int client, const float value[3])
+{
+	g_fSmoothLineAngles[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 线性平滑结束帧的角度（俯仰/偏航）。
+ */
+float g_fSmoothEndFrameAngles[MAXPLAYERS + 1][2];
+
+public void Player_GetSmoothEndFrameAngles(int client, float out[2])
+{
+	out = g_fSmoothEndFrameAngles[client];
+}
+
+public void Player_SetSmoothEndFrameAngles(int client, const float value[2])
+{
+	g_fSmoothEndFrameAngles[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 线性插值输出的位置。
+ */
+float g_fSmoothOutPos[MAXPLAYERS + 1][3];
+
+public void Player_GetSmoothOutPos(int client, float out[3])
+{
+	out = g_fSmoothOutPos[client];
+}
+
+public void Player_SetSmoothOutPos(int client, const float value[3])
+{
+	g_fSmoothOutPos[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 线性插值输出的角度（俯仰/偏航）。
+ */
+float g_fSmoothOutAng[MAXPLAYERS + 1][2];
+
+public void Player_GetSmoothOutAng(int client, float out[2])
+{
+	out = g_fSmoothOutAng[client];
+}
+
+public void Player_SetSmoothOutAng(int client, const float value[2])
+{
+	g_fSmoothOutAng[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 线性平滑覆盖的总tick数。
+ */
+int g_iSmoothLineTickCount[MAXPLAYERS + 1];
+
+public int Player_GetSmoothLineTickCount(int client)
+{
+	return g_iSmoothLineTickCount[client];
+}
+
+public void Player_SetSmoothLineTickCount(int client, int value)
+{
+	g_iSmoothLineTickCount[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 线性平滑递减变量。
+ */
+int g_iSmoothLineDecrement[MAXPLAYERS + 1];
+
+public int Player_GetSmoothLineDecrement(int client)
+{
+	return g_iSmoothLineDecrement[client];
+}
+
+public void Player_SetSmoothLineDecrement(int client, int value)
+{
+	g_iSmoothLineDecrement[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 播放时用于注入的按键掩码。
+ */
+int g_iPlaybackButtons[MAXPLAYERS + 1];
+
+public int Player_GetPlaybackButtons(int client)
+{
+	return g_iPlaybackButtons[client];
+}
+
+public void Player_SetPlaybackButtons(int client, int value)
+{
+	g_iPlaybackButtons[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 播放时用于注入的扩展按键（下一帧的按键，解决1tick延迟问题）。
+ */
+int g_iPlaybackButtonsEx[MAXPLAYERS + 1];
+
+public int Player_GetPlaybackButtonsEx(int client)
+{
+	return g_iPlaybackButtonsEx[client];
+}
+
+public void Player_SetPlaybackButtonsEx(int client, int value)
+{
+	g_iPlaybackButtonsEx[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 轨迹绘制当前行索引。
+ */
+int g_iTraceLine[MAXPLAYERS + 1];
+
+public int Player_GetTraceLine(int client)
+{
+	return g_iTraceLine[client];
+}
+
+public void Player_SetTraceLine(int client, int value)
+{
+	g_iTraceLine[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 是否已加载Replay文件标记。
+ */
+bool g_bIsFileLoaded[MAXPLAYERS + 1];
+
+public bool Player_GetIsFileLoaded(int client)
+{
+	return g_bIsFileLoaded[client];
+}
+
+public void Player_SetIsFileLoaded(int client, bool value)
+{
+	g_bIsFileLoaded[client] = value;
+}
+
+//=============================================================================
+
+/**
+ * @brief 闲置/接管标记位。
+ */
+int g_iIdleFlags[MAXPLAYERS + 1];
+
+public int Player_GetIdleFlags(int client)
+{
+	return g_iIdleFlags[client];
+}
+
+public void Player_SetIdleFlags(int client, int value)
+{
+	g_iIdleFlags[client] = value;
+}
+
+public void Player_AddIdleFlags(int client, int value)
+{
+	g_iIdleFlags[client] |= value;
+}
+
+public void Player_ClearIdleFlags(int client)
+{
+	g_iIdleFlags[client] = 0;
+}
+
+//=============================================================================
+
+/**
+ * @brief 重置所有与播放/录制相关的玩家状态。
+ * 在停止播放、连接断开、地图切换等场景调用。
+ */
+public void Player_ResetAllReplayState(int client)
+{
+	if (client < 1 || client > MAXPLAYERS)
+	{
+		return;
+	}
+	
+	Player_SetIsSegmenting(client, false);
+	Player_SetIsRewinding(client, false);
+	Player_SetHasRun(client, false);
+	Player_SetPlayingReplay(client, false);
+	Player_SetRewindFrame(client, 0);
+	Player_DeleteRecordFrames(client);
+	Player_SetIsPauseWhilePlaying(client, false);
+	Player_SetIsLinearTransition(client, false);
+	Player_SetAngleSmooth(client, 0);
+	Player_SetSmoothLineDecrement(client, 0);
+	Player_SetIsFileLoaded(client, false);
+	Player_SetTraceLine(client, 0);
+	Player_SetAttackCounter(client, 0);
+	Player_ClearIdleFlags(client);
+	Player_SetPlaybackButtons(client, 0);
+	Player_SetPlaybackButtonsEx(client, 0);
+}
