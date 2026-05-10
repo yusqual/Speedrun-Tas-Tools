@@ -1,0 +1,6 @@
+"Addoninfo"
+{
+	addontitle "Speedrunner Tools"
+	addonversion "5.5"
+	addondescription "Speedrunner Tools makes speedrun recording more convenient."
+}

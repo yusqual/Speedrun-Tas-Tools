@@ -30,7 +30,7 @@
 *	2021/08/08	1.删除电击器Trick的坐标映射计算代码，通过脚本计算或者通过地图info_landmark坐标直接计算并通过模板设置控制台变量:str_posmap_x,str_posmap_y,str_posmap_z
 *	2023/01/08	1.加入一个bool开关，用于控制是否在到底情况下继续播放replay，默认是关闭。
 *	2025/10/16	1.加入一个bool开关，用于控制是否仅设置速度，默认是关闭。
-* 	2026/02/23  1.修复爬梯动作问题.
+* 	2026/02/23	1.尝试修复爬梯动作问题.
 *                        .::::.
 *                      .::::::::.
 *                     :::::::::::
@@ -71,12 +71,12 @@
 	https://forums.alliedmods.net/showthread.php?t=247770
 */
 #include <multicolors>
-#include "STR/Time.inc"
-#include "STR/Menus.inc"
-#include "STR/Formats.inc"
-#include "STR/Vector.inc"
-#include "STR/STAPlayer.inc"
-#include "STR/ReplayFrame.inc"
+#include "STR\Time.inc"
+#include "STR\Menus.inc"
+#include "STR\Formats.inc"
+#include "STR\Vector.inc"
+#include "STR\STAPlayer.inc"
+#include "STR\ReplayFrame.inc"
 
 
 #define L4D2_TEAM_NONE		0
@@ -1379,7 +1379,7 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishv
 			CopyVector2ToVector3(frameangles, viewangles);
 
 			
-			if(Player_GetStopFrame(client) /*&& !IsFakeClient(client)*/)
+			if(Player_GetStopFrame(client) && !IsFakeClient(client))
 			{
 				if(curframe == Player_GetStopFrame(client) && GetConVarBool(b_PlayingToRecord))
 				{
@@ -1603,13 +1603,11 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishv
 										wishvel[0] = velocity[0];
 										wishvel[1] = velocity[1];
 										wishvel[2] = velocity[2];
-									// STR_PrintMessageToAllClients("MOVETYPE_LADDER");
 									}
 									else
 									{
 										//DispatchKeyValueVector(client, "origin", pos);
 										TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
-									// STR_PrintMessageToAllClients("No MOVETYPE_LADDER");
 									}
 									DispatchKeyValueVector(client, "origin", pos);
 									//STR_PrintMessageToAllClients("Client");
@@ -1633,8 +1631,8 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishv
 
 					}	
 					//*/
-					// SetEntityFlags(client, frameinfo[FRAME_FFLAG]);
-					// SetEntityMoveType(client, frameinfo[FRAME_MOVETYPE]);
+					//SetEntityFlags(client, frameinfo[FRAME_FFLAG]);//20210421
+					//SetEntityMoveType(client, frameinfo[FRAME_MOVETYPE]);//20210421
 					
 				}
 				
