@@ -94,7 +94,7 @@ public void HandleReplayRewind(int client)
 		Player_SetRewindFrame(client, lastindex);
 	}
 	
-	// 显示当前帧信息
+	// 显示当前帧信息（暂停/倒带时始终显示，不依赖 ConVar）
 	curframe = Player_GetRewindFrame(client);
 	if (lastindex > 0)
 	{
@@ -106,7 +106,7 @@ public void HandleReplayRewind(int client)
 		char curtimebuf[64];
 		FormatTimeSpan(curtimebuf, sizeof(curtimebuf), curtime);
 		
-		// 此处不直接输出文字，由调用方决定是否显示
+		PrintCenterText(client, "%d / %d\nTime: %s", curframe, lastindex, curtimebuf);
 	}
 }
 
@@ -454,7 +454,8 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 	// =========================================================
 	if (curframe == 0)
 	{
-		// 第一帧始终强制设置全部
+		// 第一帧保存当前倍速快照，并强制设置位置/角度/速度
+		Player_SetPlaybackTimeScale(client, GetConVarFloat(FindConVar("host_timescale")));
 		TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
 		DispatchKeyValueVector(client, "origin", pos);
 	}
@@ -489,7 +490,7 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 					DispatchKeyValueVector(client, "origin", pos);
 					Player_SetAngleSmooth(client, g_iAngleSmoothTickCount);
 				}
-				else if (!HandleAngleSmoothTransition(client, curButtons, pos, velocity, fPlaybackTimeScale))
+				else if (!HandleAngleSmoothTransition(client, curButtons, pos, velocity, Player_GetPlaybackTimeScale(client)))
 				{
 					// 正常播放路径
 					ApplyPlaybackPosition(client, frameinfo, viewangles, velocity, pos, buttons, wishvel);
@@ -533,6 +534,15 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 		Format(sKeyValue, sizeof(sKeyValue), "if (\"OnPlayTick\" in getroottable()) OnPlayTick(self, %d)", curframe);
 		SetVariantString(sKeyValue);
 		AcceptEntityInput(client, "RunScriptCode");
+		
+		// 显示帧信息（正常播放时受 sm_showframe 控制）
+		if (GetConVarBool(FindConVar("sm_showframe")))
+		{
+			float tickinterval = GetTickInterval();
+			char curtimebuf[64];
+			FormatTimeSpan(curtimebuf, sizeof(curtimebuf), curframe * tickinterval);
+			PrintCenterText(client, "%d / %d\nTime: %s", curframe, length - 1, curtimebuf);
+		}
 		
 		// 播放结束检测
 		if (curframe >= length - 2)

@@ -558,12 +558,15 @@ public int MenuHandler_SegmentReplay(Menu menu, MenuAction action, int param1, i
 			case JumpToStart:
 			{
 				Player_SetRewindFrame(client, 0);
+				SetPlayerReplayFrame(client, client, 0);
 				STR_OpenSegmentReplayMenu(client);
 			}
 			
 			case JumpToEnd:
 			{
-				Player_SetRewindFrame(client, Player_GetRecordedFramesCount(client) - 1);
+				int endFrame = Player_GetRecordedFramesCount(client) - 1;
+				Player_SetRewindFrame(client, endFrame);
+				SetPlayerReplayFrame(client, client, endFrame);
 				STR_OpenSegmentReplayMenu(client);
 			}
 		}
@@ -1337,35 +1340,4 @@ public Action Cmd_ReplayCloseDrawTrace(int client, int args)
 public void STR_DisplayRingToClient(int client, int sprite, float points[3], float radius, float lifetime)
 {
 	TE_SetupBeamRingPoint(points, radius, radius + 5.0, sprite, 0, 0, 0, lifetime, 2.0, 0.0, {255, 0, 255, 255}, 0, 0);
-}
-
-/**
- * @brief 显示屏幕帧信息（播放时）。
- * 在 OnPlayerRunCmdPost 中调用，更新 HUD 显示。
- *
- * @param client              客户端索引。
- * @param bShowFrame          sm_showframe ConVar 值。
- * @param bReplayDebug        sm_replaydebug ConVar 值。
- */
-public void ShowFrameHUD(int client, bool bShowFrame, bool bReplayDebug)
-{
-	if (Player_GetIsPlayingReplay(client) && bShowFrame)
-	{
-		int curframe = Player_GetRewindFrame(client);
-		int total = Player_GetRecordedFramesCount(client);
-		
-		if (total > 0)
-		{
-			float tickinterval = GetTickInterval();
-			int elapsed = curframe;
-			float curtime = elapsed * tickinterval;
-			
-			char curtimebuf[64];
-			FormatTimeSpan(curtimebuf, sizeof(curtimebuf), curtime);
-			
-			char hudbuf[128];
-			Format(hudbuf, sizeof(hudbuf), "%d / %d\nTime: %s", curframe, total - 1, curtimebuf);
-			PrintCenterText(client, hudbuf);
-		}
-	}
 }

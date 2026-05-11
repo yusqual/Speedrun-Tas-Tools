@@ -64,7 +64,6 @@
 //=============================================================================
 
 // ConVar 句柄
-Handle b_ShowFrame;
 Handle b_PlayingToRecord;
 Handle b_ReplayDebug;
 Handle b_PlayWhenIncapacitated;
@@ -149,7 +148,7 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_test",                   Cmd_Test);
 	
 	// 注册 ConVar
-	b_ShowFrame          = CreateConVar("sm_showframe", "1", "是否在屏幕中间显示Replay细节.", FCVAR_NONE);
+	CreateConVar("sm_showframe", "1", "是否在屏幕中间显示Replay细节.", FCVAR_NONE);
 	b_PlayingToRecord    = CreateConVar("sm_replaytorecord", "0", "从Playing转换为Record的开关.", FCVAR_NOTIFY);
 	b_ReplayDebug        = CreateConVar("sm_replaydebug", "0", "Replay的Debug开关(Trace是否全局透视).", FCVAR_NOTIFY);
 	b_PlayWhenIncapacitated = CreateConVar("sm_replay_incapacitated", "0", "是否在倒地状态播放replay.", FCVAR_NOTIFY);
@@ -255,11 +254,8 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishv
  */
 public void OnPlayerRunCmdPost(int client)
 {
-	if (Player_GetIsPlayingReplay(client))
-	{
-		bool bShow = GetConVarBool(b_ShowFrame);
-		ShowFrameHUD(client, bShow, false);
-	}
+	// 中心文字显示已移至 HandleReplayRewind 和 HandleReplayPlayback 内部
+	// 此处不再处理，避免时序问题（OnPlayerRunCmd 中可能重置播放状态）
 }
 
 //=============================================================================

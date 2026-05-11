@@ -1092,6 +1092,24 @@ public void Player_ClearIdleFlags(int client)
 //=============================================================================
 
 /**
+ * @brief 播放开始时的 host_timescale 快照。
+ * 用于在自由视角结束后恢复倍速。
+ */
+float g_fPlaybackTimeScale[MAXPLAYERS + 1];
+
+public float Player_GetPlaybackTimeScale(int client)
+{
+	return g_fPlaybackTimeScale[client];
+}
+
+public void Player_SetPlaybackTimeScale(int client, float value)
+{
+	g_fPlaybackTimeScale[client] = value;
+}
+
+//=============================================================================
+
+/**
  * @brief 重置所有与播放/录制相关的玩家状态。
  * 在停止播放、连接断开、地图切换等场景调用。
  */
