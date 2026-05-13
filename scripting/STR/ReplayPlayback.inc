@@ -351,7 +351,26 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, Float:{0.0, 0.0, 0.0});
 		return Plugin_Continue;
 	}
-	
+
+	// =========================================================
+	// 多人同步开始：武装玩家等待统一起始 tick
+	// =========================================================
+	if (g_iReplaySyncStartTick > 0 && g_bReplaySyncArmed[client])
+	{
+		if (GetGameTickCount() >= g_iReplaySyncStartTick)
+		{
+			g_bReplaySyncArmed[client] = false;
+			Player_SetIsRewinding(client, false);
+		}
+		else
+		{
+			Player_SetPlaybackButtons(client, 0);
+			Player_SetPlaybackButtonsEx(client, 0);
+			TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, Float:{0.0, 0.0, 0.0});
+			return Plugin_Changed;
+		}
+	}
+
 	bool normalproc = true;
 	int curframe = Player_GetRewindFrame(client);
 	

@@ -1088,6 +1088,31 @@ public void Player_SetPlaybackTimeScale(int client, float value)
 //=============================================================================
 
 /**
+ * @brief 多人同步播放的全局起始 tick。
+ * -1 表示没有正在进行的同步。
+ * 由 Cmd_ReplayContinue 设置，所有玩家共享此 tick 来对齐开始时间。
+ */
+int g_iReplaySyncStartTick = -1;
+
+/**
+ * @brief 玩家是否已武装（等待同步开始）。
+ * 在同步 tick 到达前，玩家处于暂停状态，不推进帧。
+ */
+bool g_bReplaySyncArmed[MAXPLAYERS + 1];
+
+public bool Player_GetIsReplaySyncArmed(int client)
+{
+	return g_bReplaySyncArmed[client];
+}
+
+public void Player_SetReplaySyncArmed(int client, bool value)
+{
+	g_bReplaySyncArmed[client] = value;
+}
+
+//=============================================================================
+
+/**
  * @brief 重置所有与播放/录制相关的玩家状态。
  * 在停止播放、连接断开、地图切换等场景调用。
  */
@@ -1113,4 +1138,5 @@ public void Player_ResetAllReplayState(int client)
 	Player_ClearIdleFlags(client);
 	Player_SetPlaybackButtons(client, 0);
 	Player_SetPlaybackButtonsEx(client, 0);
+	g_bReplaySyncArmed[client] = false;
 }
