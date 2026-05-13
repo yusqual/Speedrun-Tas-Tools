@@ -289,7 +289,15 @@ public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_
 		if (ibuttons & IN_RIGHT && !bOnlySetVel)
 			ClientCommand(client, "+right");
 		else ClientCommand(client, "-right");
-		
+
+		if (ibuttons & IN_MOVELEFT && !bOnlySetVel)
+			ClientCommand(client, "+moveleft");
+		else ClientCommand(client, "-moveleft");
+
+		if (ibuttons & IN_MOVERIGHT && !bOnlySetVel)
+			ClientCommand(client, "+moveright");
+		else ClientCommand(client, "-moveright");
+
 		if (ibuttons & IN_ATTACK2) ClientCommand(client, "+attack2");
 		else ClientCommand(client, "-attack2");
 		
