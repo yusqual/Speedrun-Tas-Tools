@@ -455,7 +455,7 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 	// =========================================================
 	// 武器切换
 	// =========================================================
-	if (frameinfo[FRAME_WEAPON] > 0)
+	if (frameinfo[FRAME_WEAPON] > 0 && frameinfo[FRAME_MOVETYPE] != MOVETYPE_LADDER)
 	{
 		FakeClientCommand(client, "use %s", g_Items[frameinfo[FRAME_WEAPON]]);
 	}
@@ -514,20 +514,15 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 			}
 			else
 			{
-				// Bot 直接应用
-				TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
 				if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
 				{
-					// 爬梯时设置 MOVETYPE_LADDER + wishvel 使引擎正确应用爬梯物理
-					SetEntityMoveType(client, MOVETYPE_LADDER);
-					wishvel[0] = velocity[0];
-					wishvel[1] = velocity[1];
-					wishvel[2] = velocity[2];
+					TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
 				}
 				else
 				{
 					// 非爬梯帧恢复 MOVETYPE_WALK，防止爬梯状态残留
 					SetEntityMoveType(client, MOVETYPE_WALK);
+					TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
 				}
 				DispatchKeyValueVector(client, "origin", pos);
 				buttons = frameinfo[FRAME_Buttons];
@@ -605,13 +600,9 @@ static void ApplyPlaybackPosition(int client, any frameinfo[FRAME_Length],
 {
 	if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
 	{
-		// 爬梯模式：通过 wishvel 传递速度；设置 MOVETYPE_LADDER 使引擎隐藏 HUD/武器并应用爬梯物理
+		// 爬梯帧：不设置 MOVETYPE/velocity/wishvel，让引擎从按键+角度自然处理爬梯物理
 		buttons = frameinfo[FRAME_Buttons];
-		SetEntityMoveType(client, MOVETYPE_LADDER);
 		TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
-		wishvel[0] = velocity[0];
-		wishvel[1] = velocity[1];
-		wishvel[2] = velocity[2];
 	}
 	else
 	{
