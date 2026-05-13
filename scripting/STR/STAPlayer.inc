@@ -795,28 +795,6 @@ public void Player_SetAngleSmooth(int client, int value)
 
 //=============================================================================
 
-/**
- * @brief 攻击按键倒计时计数器。
- * 播放Replay时用于延迟释放+attack命令。
- */
-int g_iAttackCounter[MAXPLAYERS + 1];
-
-/**
- * @brief 获取攻击按键倒计数值。
- */
-public int Player_GetAttackCounter(int client)
-{
-	return g_iAttackCounter[client];
-}
-
-/**
- * @brief 设置攻击按键倒计数值。
- */
-public void Player_SetAttackCounter(int client, int value)
-{
-	g_iAttackCounter[client] = value;
-}
-
 //=============================================================================
 
 /**
@@ -1132,7 +1110,6 @@ public void Player_ResetAllReplayState(int client)
 	Player_SetSmoothLineDecrement(client, 0);
 	Player_SetIsFileLoaded(client, false);
 	Player_SetTraceLine(client, 0);
-	Player_SetAttackCounter(client, 0);
 	Player_ClearIdleFlags(client);
 	Player_SetPlaybackButtons(client, 0);
 	Player_SetPlaybackButtonsEx(client, 0);

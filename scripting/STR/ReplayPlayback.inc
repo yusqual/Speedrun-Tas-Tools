@@ -273,11 +273,12 @@ public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_
 		if (ibuttons & IN_DUCK) ClientCommand(client, "+duck");
 		else ClientCommand(client, "-duck");
 		
-		if (ibuttons & IN_FORWARD && GetEntityFlags(client) & FL_ONGROUND && !bOnlySetVel)
+		// 爬梯时 FL_ONGROUND 为 false，移除该限制使 +forward 能正常发送
+		if (ibuttons & IN_FORWARD && !bOnlySetVel)
 			ClientCommand(client, "+forward");
 		else ClientCommand(client, "-forward");
 		
-		if (ibuttons & IN_BACK && GetEntityFlags(client) & FL_ONGROUND && !bOnlySetVel)
+		if (ibuttons & IN_BACK && !bOnlySetVel)
 			ClientCommand(client, "+back");
 		else ClientCommand(client, "-back");
 		
@@ -296,25 +297,20 @@ public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_
 		else ClientCommand(client, "-reload");
 	}
 	
-	// 扩展按键（下一帧）：+use 和 +attack
+	// 扩展按键（下一帧）：+use 使用 ibuttonsEx（因为开门需要提前1tick）
 	if (ibuttonsEx & IN_USE) ClientCommand(client, "+use");
 	else ClientCommand(client, "-use");
-	
-	if (ibuttonsEx & IN_ATTACK)
+
+	// 攻击按键直接从 ibuttons（当前帧）处理，不再使用计数器。
+	// 原因：用 ibuttonsEx + 计数器的方式，当播放因地图过渡等被中断时，
+	// counter 无法递减到 0，导致 -attack 永远发不出，左键卡死。
+	if (ibuttons & IN_ATTACK)
 	{
 		ClientCommand(client, "+attack");
-		Player_SetAttackCounter(client, 1);
 	}
 	else
 	{
-		int attackCounter = Player_GetAttackCounter(client);
-		attackCounter--;
-		if (attackCounter <= 0)
-		{
-			ClientCommand(client, "-attack");
-			attackCounter = 0;
-		}
-		Player_SetAttackCounter(client, attackCounter);
+		ClientCommand(client, "-attack");
 	}
 }
 
@@ -416,6 +412,7 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 		{
 			// 播放到指定帧停止
 			Player_ResetAllReplayState(client);
+			ResetButton(client);
 			if (IsClientInGame(client) && GetClientTeam(client) != 1)
 			{
 				SetEntityMoveType(client, MOVETYPE_WALK);
@@ -502,9 +499,16 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 				TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
 				if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
 				{
+					// 爬梯时设置 MOVETYPE_LADDER + wishvel 使引擎正确应用爬梯物理
+					SetEntityMoveType(client, MOVETYPE_LADDER);
 					wishvel[0] = velocity[0];
 					wishvel[1] = velocity[1];
 					wishvel[2] = velocity[2];
+				}
+				else
+				{
+					// 非爬梯帧恢复 MOVETYPE_WALK，防止爬梯状态残留
+					SetEntityMoveType(client, MOVETYPE_WALK);
 				}
 				DispatchKeyValueVector(client, "origin", pos);
 				buttons = frameinfo[FRAME_Buttons];
@@ -549,7 +553,10 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 		{
 			Player_SetRewindFrame(client, length - 1);
 			Player_SetIsRewinding(client, false);
-			
+
+			// 在所有状态变量之前释放按键，防止最后一帧注入的
+			// +attack/+attack2 等卡死（尤其 +attack 导致左键失效）
+			ResetButton(client);
 			Player_ResetAllReplayState(client);
 			if (IsClientInGame(client) && GetClientTeam(client) != 1)
 			{
@@ -579,8 +586,9 @@ static void ApplyPlaybackPosition(int client, any frameinfo[FRAME_Length],
 {
 	if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
 	{
-		// 爬梯模式：通过 wishvel 传递速度
+		// 爬梯模式：通过 wishvel 传递速度；设置 MOVETYPE_LADDER 使引擎隐藏 HUD/武器并应用爬梯物理
 		buttons = frameinfo[FRAME_Buttons];
+		SetEntityMoveType(client, MOVETYPE_LADDER);
 		TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
 		wishvel[0] = velocity[0];
 		wishvel[1] = velocity[1];
@@ -588,6 +596,8 @@ static void ApplyPlaybackPosition(int client, any frameinfo[FRAME_Length],
 	}
 	else
 	{
+		// 非爬梯帧恢复 MOVETYPE_WALK，防止爬梯状态残留
+		SetEntityMoveType(client, MOVETYPE_WALK);
 		TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
 	}
 	DispatchKeyValueVector(client, "origin", pos);
