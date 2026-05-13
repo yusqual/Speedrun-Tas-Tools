@@ -32,6 +32,8 @@ public void ResetButton(any client)
 		ClientCommand(client, "-use");
 		ClientCommand(client, "-left");
 		ClientCommand(client, "-right");
+		ClientCommand(client, "-moveleft");
+		ClientCommand(client, "-moveright");
 	}
 }
 

@@ -429,8 +429,8 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 			SetEntityMoveType(client, MOVETYPE_NONE);
 			Player_SetRewindFrame(client, endframe - 1);
 			
+			ResetButton(client);
 			ClientCommand(client, "slot1");
-			ClientCommand(client, "-duck");
 			
 			STR_PrintMessageToAllClients("%N的Replay已经从%d帧继续.", client, endframe);
 			return Plugin_Changed;
