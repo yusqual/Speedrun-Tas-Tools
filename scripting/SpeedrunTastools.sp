@@ -1,6 +1,6 @@
 //SourcePawn
 
-/**
+/**:
  * @brief Speedrun TAS Tools (L4D2) — 重构版本
  *
  * 本文件为重构后的主入口文件，职责如下：
@@ -148,7 +148,7 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_test",                   Cmd_Test);
 	
 	// 注册 ConVar
-	CreateConVar("sm_showframe", "1", "是否在屏幕中间显示Replay细节.", FCVAR_NONE);
+	CreateConVar("sm_showframe", "0", "是否在屏幕中间显示Replay细节.", FCVAR_NONE);
 	b_PlayingToRecord    = CreateConVar("sm_replaytorecord", "0", "从Playing转换为Record的开关.", FCVAR_NOTIFY);
 	b_ReplayDebug        = CreateConVar("sm_replaydebug", "0", "Replay的Debug开关(Trace是否全局透视).", FCVAR_NOTIFY);
 	b_PlayWhenIncapacitated = CreateConVar("sm_replay_incapacitated", "0", "是否在倒地状态播放replay.", FCVAR_NOTIFY);
@@ -202,6 +202,18 @@ public void OnMapStart()
 	for (int i = 1; i <= MAXCLIENTS; i++)
 	{
 		Player_ResetAllReplayState(i);
+		
+		/**
+		 * @bug 修复：地图过渡期间播放 Replay 可能导致 +attack 按键卡死。
+		 * 原因分析：
+		 * - OnMapEnd → ForceStopAllReplays → ResetPlayerReplaySegment 通过
+		 *   RequestFrame(ResetButton) 排队释放按键，但跨地图的 RequestFrame
+		 *   回调可能丢失（SourceMod 不保证跨地图的帧回调存活）。
+		 * - 新地图的 OnMapStart 只重置了状态（Player_ResetAllReplayState）
+		 *   但没有发送 -attack 等 ClientCommand，导致 +attack 卡死。
+		 * 修复：在 OnMapStart 中为每个槽位重新排队 ResetButton。
+		 */
+		RequestFrame(ResetButton, i);
 	}
 }
 
