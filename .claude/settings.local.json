@@ -5,7 +5,9 @@
       "Bash(ls \"C:/Program Files \\(x86\\)/SourceMod\")",
       "Bash(where spcomp *)",
       "Bash(git checkout *)",
-      "Bash(./compile.exe SpeedrunTastools.sp)"
+      "Bash(./compile.exe SpeedrunTastools.sp)",
+      "Bash(grep -oh '\"command\":\"[^\"]*compile[^\"]*\"' /c/Users/Yusqual/.claude/projects/c--Users-Yusqual-Desktop-Code-SourceMod-Speedrun-Tas-Tools/*.jsonl 2>/dev/null | head -10)",
+      "Read(//c/Users/Yusqual/.claude/projects/c--Users-Yusqual-Desktop-Code-SourceMod-Speedrun-Tas-Tools/**)"
     ]
   }
 }

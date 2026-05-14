@@ -16,35 +16,35 @@
  */
 public bool LoadReplayFromFile(int client, const char[] filepath)
 {
-	File file = OpenFile(filepath, "rb");
-	
-	if (file == null)
-	{
-		return false;
-	}
-	
-	int framecount;
-	ReadFileCell(file, framecount, 4);
-	
-	Player_CreateFrameArray(client);
-	any frameinfo[FRAME_Length];
-	
-	for (int i = 0; i < framecount; ++i)
-	{
-		ReadFile(file, frameinfo, sizeof(frameinfo), 4);
-		Player_PushFrame(client, frameinfo);
-	}
-	
-	delete file;
-	
-	// 自动设置 StopFrame（若无设置）
-	if (Player_GetStopFrame(client) == 0)
-	{
-		Player_SetStopFrame(client, 99999);
-	}
-	
-	Player_SetIsFileLoaded(client, true);
-	return true;
+    File file = OpenFile(filepath, "rb");
+    
+    if (file == null)
+    {
+        return false;
+    }
+    
+    int framecount;
+    ReadFileCell(file, framecount, 4);
+    
+    Player_CreateFrameArray(client);
+    any frameinfo[FRAME_Length];
+    
+    for (int i = 0; i < framecount; ++i)
+    {
+        ReadFile(file, frameinfo, sizeof(frameinfo), 4);
+        Player_PushFrame(client, frameinfo);
+    }
+    
+    delete file;
+    
+    // 自动设置 StopFrame（若无设置）
+    if (Player_GetStopFrame(client) == 0)
+    {
+        Player_SetStopFrame(client, 99999);
+    }
+    
+    Player_SetIsFileLoaded(client, true);
+    return true;
 }
 
 /**
@@ -57,30 +57,30 @@ public bool LoadReplayFromFile(int client, const char[] filepath)
  */
 public bool SaveReplayToFile(int client, const char[] filepath)
 {
-	File file = OpenFile(filepath, "wb");
-	
-	if (file == null)
-	{
-		return false;
-	}
-	
-	int framecount = Player_GetRecordedFramesCount(client);
-	WriteFileCell(file, framecount, 4);
-	
-	any frameinfo[FRAME_Length];
-	
-	for (int i = 0; i < framecount; ++i)
-	{
-		Player_GetFrame(client, i, frameinfo);
-		
-		for (int j = 0; j < FRAME_Length; ++j)
-		{
-			WriteFileCell(file, frameinfo[j], 4);
-		}
-	}
-	
-	delete file;
-	return true;
+    File file = OpenFile(filepath, "wb");
+    
+    if (file == null)
+    {
+        return false;
+    }
+    
+    int framecount = Player_GetRecordedFramesCount(client);
+    WriteFileCell(file, framecount, 4);
+    
+    any frameinfo[FRAME_Length];
+    
+    for (int i = 0; i < framecount; ++i)
+    {
+        Player_GetFrame(client, i, frameinfo);
+        
+        for (int j = 0; j < FRAME_Length; ++j)
+        {
+            WriteFileCell(file, frameinfo[j], 4);
+        }
+    }
+    
+    delete file;
+    return true;
 }
 
 /**
@@ -95,64 +95,64 @@ public bool SaveReplayToFile(int client, const char[] filepath)
  */
 public bool SaveReplayToFileWithDebug(int client, const char[] filepath, const char[] dirpath, const char[] filename)
 {
-	if (!SaveReplayToFile(client, filepath))
-	{
-		return false;
-	}
-	
-	// 输出调试坐标文件
-	int framecount = Player_GetRecordedFramesCount(client);
-	any frameinfo[FRAME_Length];
-	
-	// Pos_x.txt
-	{
-		char debugPath[PLATFORM_MAX_PATH];
-		FormatEx(debugPath, sizeof(debugPath), "%s/Pos_x.txt", dirpath);
-		File debugFile = OpenFile(debugPath, "w");
-		if (debugFile != null)
-		{
-			for (int i = 0; i < framecount; ++i)
-			{
-				Player_GetFrame(client, i, frameinfo);
-				WriteFileLine(debugFile, "%.03f", frameinfo[FRAME_PosX]);
-			}
-			delete debugFile;
-		}
-	}
-	
-	// Pos_y.txt
-	{
-		char debugPath[PLATFORM_MAX_PATH];
-		FormatEx(debugPath, sizeof(debugPath), "%s/Pos_y.txt", dirpath);
-		File debugFile = OpenFile(debugPath, "w");
-		if (debugFile != null)
-		{
-			for (int i = 0; i < framecount; ++i)
-			{
-				Player_GetFrame(client, i, frameinfo);
-				WriteFileLine(debugFile, "%.03f", frameinfo[FRAME_PosY]);
-			}
-			delete debugFile;
-		}
-	}
-	
-	// Pos_z.txt
-	{
-		char debugPath[PLATFORM_MAX_PATH];
-		FormatEx(debugPath, sizeof(debugPath), "%s/Pos_z.txt", dirpath);
-		File debugFile = OpenFile(debugPath, "w");
-		if (debugFile != null)
-		{
-			for (int i = 0; i < framecount; ++i)
-			{
-				Player_GetFrame(client, i, frameinfo);
-				WriteFileLine(debugFile, "%.03f", frameinfo[FRAME_PosZ]);
-			}
-			delete debugFile;
-		}
-	}
-	
-	return true;
+    if (!SaveReplayToFile(client, filepath))
+    {
+        return false;
+    }
+    
+    // 输出调试坐标文件
+    int framecount = Player_GetRecordedFramesCount(client);
+    any frameinfo[FRAME_Length];
+    
+    // Pos_x.txt
+    {
+        char debugPath[PLATFORM_MAX_PATH];
+        FormatEx(debugPath, sizeof(debugPath), "%s/Pos_x.txt", dirpath);
+        File debugFile = OpenFile(debugPath, "w");
+        if (debugFile != null)
+        {
+            for (int i = 0; i < framecount; ++i)
+            {
+                Player_GetFrame(client, i, frameinfo);
+                WriteFileLine(debugFile, "%.03f", frameinfo[FRAME_PosX]);
+            }
+            delete debugFile;
+        }
+    }
+    
+    // Pos_y.txt
+    {
+        char debugPath[PLATFORM_MAX_PATH];
+        FormatEx(debugPath, sizeof(debugPath), "%s/Pos_y.txt", dirpath);
+        File debugFile = OpenFile(debugPath, "w");
+        if (debugFile != null)
+        {
+            for (int i = 0; i < framecount; ++i)
+            {
+                Player_GetFrame(client, i, frameinfo);
+                WriteFileLine(debugFile, "%.03f", frameinfo[FRAME_PosY]);
+            }
+            delete debugFile;
+        }
+    }
+    
+    // Pos_z.txt
+    {
+        char debugPath[PLATFORM_MAX_PATH];
+        FormatEx(debugPath, sizeof(debugPath), "%s/Pos_z.txt", dirpath);
+        File debugFile = OpenFile(debugPath, "w");
+        if (debugFile != null)
+        {
+            for (int i = 0; i < framecount; ++i)
+            {
+                Player_GetFrame(client, i, frameinfo);
+                WriteFileLine(debugFile, "%.03f", frameinfo[FRAME_PosZ]);
+            }
+            delete debugFile;
+        }
+    }
+    
+    return true;
 }
 
 /**
@@ -166,36 +166,36 @@ public bool SaveReplayToFileWithDebug(int client, const char[] filepath, const c
  */
 public bool SplitReplayToFile(int client, const char[] filepath, int frame_start, int frame_end)
 {
-	int framecount = Player_GetRecordedFramesCount(client);
-	
-	if (frame_start < 0 || frame_end >= framecount || frame_start > frame_end)
-	{
-		return false;
-	}
-	
-	File file = OpenFile(filepath, "wb");
-	if (file == null)
-	{
-		return false;
-	}
-	
-	int newcount = frame_end - frame_start + 1;
-	WriteFileCell(file, newcount, 4);
-	
-	any frameinfo[FRAME_Length];
-	
-	for (int i = frame_start; i <= frame_end; ++i)
-	{
-		Player_GetFrame(client, i, frameinfo);
-		
-		for (int j = 0; j < FRAME_Length; ++j)
-		{
-			WriteFileCell(file, frameinfo[j], 4);
-		}
-	}
-	
-	delete file;
-	return true;
+    int framecount = Player_GetRecordedFramesCount(client);
+    
+    if (frame_start < 0 || frame_end >= framecount || frame_start > frame_end)
+    {
+        return false;
+    }
+    
+    File file = OpenFile(filepath, "wb");
+    if (file == null)
+    {
+        return false;
+    }
+    
+    int newcount = frame_end - frame_start + 1;
+    WriteFileCell(file, newcount, 4);
+    
+    any frameinfo[FRAME_Length];
+    
+    for (int i = frame_start; i <= frame_end; ++i)
+    {
+        Player_GetFrame(client, i, frameinfo);
+        
+        for (int j = 0; j < FRAME_Length; ++j)
+        {
+            WriteFileCell(file, frameinfo[j], 4);
+        }
+    }
+    
+    delete file;
+    return true;
 }
 
 /**
@@ -207,17 +207,17 @@ public bool SplitReplayToFile(int client, const char[] filepath, int frame_start
  */
 public int GetReplayFileFrameCount(const char[] filepath)
 {
-	File file = OpenFile(filepath, "rb");
-	if (file == null)
-	{
-		return -1;
-	}
-	
-	int framecount;
-	ReadFileCell(file, framecount, 4);
-	delete file;
-	
-	return framecount;
+    File file = OpenFile(filepath, "rb");
+    if (file == null)
+    {
+        return -1;
+    }
+    
+    int framecount;
+    ReadFileCell(file, framecount, 4);
+    delete file;
+    
+    return framecount;
 }
 
 /**
@@ -231,7 +231,7 @@ public int GetReplayFileFrameCount(const char[] filepath)
  */
 public void BuildReplayFilePath(const char[] mapname, const char[] filename, char[] output, int maxlen)
 {
-	BuildPath(Path_SM, output, maxlen, "%s/%s/%s/%s", STR_RootPath, STR_ReplayFolder, mapname, filename);
+    BuildPath(Path_SM, output, maxlen, "%s/%s/%s/%s", STR_RootPath, STR_ReplayFolder, mapname, filename);
 }
 
 /**
@@ -244,5 +244,5 @@ public void BuildReplayFilePath(const char[] mapname, const char[] filename, cha
  */
 public void BuildReplayDirPath(const char[] mapname, char[] output, int maxlen)
 {
-	BuildPath(Path_SM, output, maxlen, "%s/%s/%s", STR_RootPath, STR_ReplayFolder, mapname);
+    BuildPath(Path_SM, output, maxlen, "%s/%s/%s", STR_RootPath, STR_ReplayFolder, mapname);
 }

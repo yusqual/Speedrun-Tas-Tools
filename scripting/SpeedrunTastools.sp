@@ -100,11 +100,11 @@ Handle g_hOnRecordTick;
 
 public Plugin myinfo =
 {
-	name = "Speedrun TAS Tools(L4D2)",
-	author = "DBGaming Team",
-	description = "求生之路2速跑的TAS工具.",
-	version = "2.2.06122-refactored",
-	url = ""
+    name = "Speedrun TAS Tools(L4D2)",
+    author = "DBGaming Team",
+    description = "求生之路2速跑的TAS工具.",
+    version = "2.2.06122-refactored",
+    url = ""
 };
 
 //=============================================================================
@@ -113,84 +113,84 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
-	// 创建数据目录
-	char dirbuf[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, dirbuf, sizeof(dirbuf), "%s", STR_RootPath);
-	if (!DirExists(dirbuf))
-		CreateDirectory(dirbuf, 511);
-	
-	BuildPath(Path_SM, dirbuf, sizeof(dirbuf), "%s/%s", STR_RootPath, STR_ReplayFolder);
-	if (!DirExists(dirbuf))
-		CreateDirectory(dirbuf, 511);
-	
-	BuildPath(Path_SM, dirbuf, sizeof(dirbuf), "%s/%s", STR_RootPath, STR_ZoneFolder);
-	if (!DirExists(dirbuf))
-		CreateDirectory(dirbuf, 511);
-	
-	// 注册控制台命令
-	RegConsoleCmd("sm_str",                   Cmd_STR_Main);
-	RegConsoleCmd("sm_loadfile",              Cmd_LoadFile);
-	RegConsoleCmd("sm_replay_continue",        Cmd_ReplayContinue);
-	RegConsoleCmd("sm_replayrecord",           Cmd_ReplayRecord);
-	RegConsoleCmd("sm_replaysave",             Cmd_ReplaySave);
-	RegConsoleCmd("sm_resetreplay",            Cmd_ResetReplay);
-	RegConsoleCmd("sm_smoothreplay",           Cmd_SmoothReplay);
-	RegConsoleCmd("sm_replaydrawtrace",        Cmd_ReplayDrawTrace);
-	RegConsoleCmd("sm_replaydrawtrace_posmap", Cmd_ReplayDrawTracePosMap);
-	RegConsoleCmd("sm_replaydrawtraceclose",   Cmd_ReplayCloseDrawTrace);
-	RegConsoleCmd("sm_startframe",             Cmd_SetFrameParam);
-	RegConsoleCmd("sm_endframe",               Cmd_SetFrameParam);
-	RegConsoleCmd("sm_stopframe",              Cmd_SetFrameParam);
-	RegConsoleCmd("sm_removeslot",             Cmd_RemoveSlot);
-	RegConsoleCmd("sm_replay_pause",           Cmd_ReplayPause);
-	RegConsoleCmd("sm_replay_unpause",         Cmd_ReplayUnPause);
-	RegConsoleCmd("sm_replay_split",           Cmd_ReplaySplit);
-	RegConsoleCmd("sm_test",                   Cmd_Test);
-	
-	// 注册 ConVar
-	CreateConVar("sm_showframe", "0", "是否在屏幕中间显示Replay细节.", FCVAR_NONE);
-	b_PlayingToRecord    = CreateConVar("sm_replaytorecord", "0", "从Playing转换为Record的开关.", FCVAR_NOTIFY);
-	b_ReplayDebug        = CreateConVar("sm_replaydebug", "0", "Replay的Debug开关(Trace是否全局透视).", FCVAR_NOTIFY);
-	b_PlayWhenIncapacitated = CreateConVar("sm_replay_incapacitated", "0", "是否在倒地状态播放replay.", FCVAR_NOTIFY);
-	g_ConVar_ReplayIdleAnytime = CreateConVar("sm_replay_idle_anytime", "0", "Allow idle even if no human players in game(via PCI).", FCVAR_NONE);
-	g_ConVar_PosMap_x    = CreateConVar("str_posmap_x", "0.0", "坐标映射x分量.", FCVAR_NOTIFY);
-	g_ConVar_PosMap_y    = CreateConVar("str_posmap_y", "0.0", "坐标映射y分量.", FCVAR_NOTIFY);
-	g_ConVar_PosMap_z    = CreateConVar("str_posmap_z", "0.0", "坐标映射z分量.", FCVAR_NOTIFY);
-	b_OnlySetVel         = CreateConVar("str_onlysetvel", "0", "仅设置速度,不设置坐标和视角.", FCVAR_NOTIFY);
-	
-	// 全局 Forward
-	g_hOnPlayTick   = CreateGlobalForward("OnPlayTick", ET_Ignore, Param_Cell, Param_Cell);
-	g_hOnRecordTick = CreateGlobalForward("OnRecordTick", ET_Ignore, Param_Cell, Param_Cell);
-	
-	// 事件钩子
-	HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
-	HookEvent("map_transition", OnGameEvent);
-	HookEvent("player_bot_replace", Event_PlayerBotReplace);
-	HookEvent("bot_player_replace", Event_PlayerBotReplace);
-	HookEvent("player_use", Event_PlayerUse);
-	
-	// SDKCall 初始化：TakeOverBot / GoAwayFromKeyboard
-	char sFilePath[64];
-	BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "gamedata/st_signs.txt");
-	if (FileExists(sFilePath))
-	{
-		Handle hConfig = LoadGameConfigFile("st_signs");
-		StartPrepSDKCall(SDKCall_Player);
-		PrepSDKCall_SetFromConf(hConfig, SDKConf_Signature, "TakeOverBot");
-		g_hTakeOverBot = EndPrepSDKCall();
-		StartPrepSDKCall(SDKCall_Player);
-		PrepSDKCall_SetFromConf(hConfig, SDKConf_Signature, "GoAwayFromKeyboard");
-		g_hGoAwayFromKeyboard = EndPrepSDKCall();
-		CloseHandle(hConfig);
-	}
-	
-	// 加载 funcommands.games
-	Handle gameconfig = LoadGameConfigFile("funcommands.games");
-	if (!gameconfig)
-	{
-		SetFailState("funcommands.games.txt not found.");
-		return;
-	}
+    // 创建数据目录
+    char dirbuf[PLATFORM_MAX_PATH];
+    BuildPath(Path_SM, dirbuf, sizeof(dirbuf), "%s", STR_RootPath);
+    if (!DirExists(dirbuf))
+        CreateDirectory(dirbuf, 511);
+    
+    BuildPath(Path_SM, dirbuf, sizeof(dirbuf), "%s/%s", STR_RootPath, STR_ReplayFolder);
+    if (!DirExists(dirbuf))
+        CreateDirectory(dirbuf, 511);
+    
+    BuildPath(Path_SM, dirbuf, sizeof(dirbuf), "%s/%s", STR_RootPath, STR_ZoneFolder);
+    if (!DirExists(dirbuf))
+        CreateDirectory(dirbuf, 511);
+    
+    // 注册控制台命令
+    RegConsoleCmd("sm_str",                   Cmd_STR_Main);
+    RegConsoleCmd("sm_loadfile",              Cmd_LoadFile);
+    RegConsoleCmd("sm_replay_continue",        Cmd_ReplayContinue);
+    RegConsoleCmd("sm_replayrecord",           Cmd_ReplayRecord);
+    RegConsoleCmd("sm_replaysave",             Cmd_ReplaySave);
+    RegConsoleCmd("sm_resetreplay",            Cmd_ResetReplay);
+    RegConsoleCmd("sm_smoothreplay",           Cmd_SmoothReplay);
+    RegConsoleCmd("sm_replaydrawtrace",        Cmd_ReplayDrawTrace);
+    RegConsoleCmd("sm_replaydrawtrace_posmap", Cmd_ReplayDrawTracePosMap);
+    RegConsoleCmd("sm_replaydrawtraceclose",   Cmd_ReplayCloseDrawTrace);
+    RegConsoleCmd("sm_startframe",             Cmd_SetFrameParam);
+    RegConsoleCmd("sm_endframe",               Cmd_SetFrameParam);
+    RegConsoleCmd("sm_stopframe",              Cmd_SetFrameParam);
+    RegConsoleCmd("sm_removeslot",             Cmd_RemoveSlot);
+    RegConsoleCmd("sm_replay_pause",           Cmd_ReplayPause);
+    RegConsoleCmd("sm_replay_unpause",         Cmd_ReplayUnPause);
+    RegConsoleCmd("sm_replay_split",           Cmd_ReplaySplit);
+    RegConsoleCmd("sm_test",                   Cmd_Test);
+    
+    // 注册 ConVar
+    CreateConVar("sm_showframe", "0", "是否在屏幕中间显示Replay细节.", FCVAR_NONE);
+    b_PlayingToRecord    = CreateConVar("sm_replaytorecord", "0", "从Playing转换为Record的开关.", FCVAR_NOTIFY);
+    b_ReplayDebug        = CreateConVar("sm_replaydebug", "0", "Replay的Debug开关(Trace是否全局透视).", FCVAR_NOTIFY);
+    b_PlayWhenIncapacitated = CreateConVar("sm_replay_incapacitated", "0", "是否在倒地状态播放replay.", FCVAR_NOTIFY);
+    g_ConVar_ReplayIdleAnytime = CreateConVar("sm_replay_idle_anytime", "0", "Allow idle even if no human players in game(via PCI).", FCVAR_NONE);
+    g_ConVar_PosMap_x    = CreateConVar("str_posmap_x", "0.0", "坐标映射x分量.", FCVAR_NOTIFY);
+    g_ConVar_PosMap_y    = CreateConVar("str_posmap_y", "0.0", "坐标映射y分量.", FCVAR_NOTIFY);
+    g_ConVar_PosMap_z    = CreateConVar("str_posmap_z", "0.0", "坐标映射z分量.", FCVAR_NOTIFY);
+    b_OnlySetVel         = CreateConVar("str_onlysetvel", "0", "仅设置速度,不设置坐标和视角.", FCVAR_NOTIFY);
+    
+    // 全局 Forward
+    g_hOnPlayTick   = CreateGlobalForward("OnPlayTick", ET_Ignore, Param_Cell, Param_Cell);
+    g_hOnRecordTick = CreateGlobalForward("OnRecordTick", ET_Ignore, Param_Cell, Param_Cell);
+    
+    // 事件钩子
+    HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
+    HookEvent("map_transition", OnGameEvent);
+    HookEvent("player_bot_replace", Event_PlayerBotReplace);
+    HookEvent("bot_player_replace", Event_PlayerBotReplace);
+    HookEvent("player_use", Event_PlayerUse);
+    
+    // SDKCall 初始化：TakeOverBot / GoAwayFromKeyboard
+    char sFilePath[64];
+    BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "gamedata/st_signs.txt");
+    if (FileExists(sFilePath))
+    {
+        Handle hConfig = LoadGameConfigFile("st_signs");
+        StartPrepSDKCall(SDKCall_Player);
+        PrepSDKCall_SetFromConf(hConfig, SDKConf_Signature, "TakeOverBot");
+        g_hTakeOverBot = EndPrepSDKCall();
+        StartPrepSDKCall(SDKCall_Player);
+        PrepSDKCall_SetFromConf(hConfig, SDKConf_Signature, "GoAwayFromKeyboard");
+        g_hGoAwayFromKeyboard = EndPrepSDKCall();
+        CloseHandle(hConfig);
+    }
+    
+    // 加载 funcommands.games
+    Handle gameconfig = LoadGameConfigFile("funcommands.games");
+    if (!gameconfig)
+    {
+        SetFailState("funcommands.games.txt not found.");
+        return;
+    }
 }
 
 //=============================================================================
@@ -199,22 +199,22 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
-	for (int i = 1; i <= MAXCLIENTS; i++)
-	{
-		Player_ResetAllReplayState(i);
-		
-		/**
-		 * @bug 修复：地图过渡期间播放 Replay 可能导致 +attack 按键卡死。
-		 * 原因分析：
-		 * - OnMapEnd → ForceStopAllReplays → ResetPlayerReplaySegment 通过
-		 *   RequestFrame(ResetButton) 排队释放按键，但跨地图的 RequestFrame
-		 *   回调可能丢失（SourceMod 不保证跨地图的帧回调存活）。
-		 * - 新地图的 OnMapStart 只重置了状态（Player_ResetAllReplayState）
-		 *   但没有发送 -attack 等 ClientCommand，导致 +attack 卡死。
-		 * 修复：在 OnMapStart 中为每个槽位重新排队 ResetButton。
-		 */
-		RequestFrame(ResetButton, i);
-	}
+    for (int i = 1; i <= MAXCLIENTS; i++)
+    {
+        Player_ResetAllReplayState(i);
+        
+        /**
+         * @bug 修复：地图过渡期间播放 Replay 可能导致 +attack 按键卡死。
+         * 原因分析：
+         * - OnMapEnd → ForceStopAllReplays → ResetPlayerReplaySegment 通过
+         *   RequestFrame(ResetButton) 排队释放按键，但跨地图的 RequestFrame
+         *   回调可能丢失（SourceMod 不保证跨地图的帧回调存活）。
+         * - 新地图的 OnMapStart 只重置了状态（Player_ResetAllReplayState）
+         *   但没有发送 -attack 等 ClientCommand，导致 +attack 卡死。
+         * 修复：在 OnMapStart 中为每个槽位重新排队 ResetButton。
+         */
+        RequestFrame(ResetButton, i);
+    }
 }
 
 //=============================================================================
@@ -227,34 +227,34 @@ public void OnMapStart()
  */
 public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishvel[3], float wishangles[3], int& weapon)
 {
-	// 1) 录制状态
-	if (Player_GetIsSegmenting(client))
-	{
-		if (Player_GetIsRewinding(client))
-		{
-			// 录制中倒带
-			return HandleReplayRecordingRewind(client, buttons, wishvel, wishangles, weapon);
-		}
-		else
-		{
-			// 正常录制
-			return HandleReplayRecording(client, buttons, impulse, wishvel, wishangles, weapon, g_hOnRecordTick);
-		}
-	}
-	
-	// 2) 播放状态
-	if (Player_GetIsPlayingReplay(client))
-	{
-		bool bPlayWhenInc = GetConVarBool(b_PlayWhenIncapacitated);
-		bool bPlayToRec   = GetConVarBool(b_PlayingToRecord);
-		bool bOnlySetVel  = GetConVarBool(b_OnlySetVel);
-		float fTimeScale  = GetConVarFloat(FindConVar("host_timescale"));
-		
-		return HandleReplayPlayback(client, buttons, wishvel, wishangles, weapon,
-			g_hOnPlayTick, bPlayWhenInc, bPlayToRec, bOnlySetVel, fTimeScale);
-	}
-	
-	return Plugin_Continue;
+    // 1) 录制状态
+    if (Player_GetIsSegmenting(client))
+    {
+        if (Player_GetIsRewinding(client))
+        {
+            // 录制中倒带
+            return HandleReplayRecordingRewind(client, buttons, wishvel, wishangles, weapon);
+        }
+        else
+        {
+            // 正常录制
+            return HandleReplayRecording(client, buttons, impulse, wishvel, wishangles, weapon, g_hOnRecordTick);
+        }
+    }
+    
+    // 2) 播放状态
+    if (Player_GetIsPlayingReplay(client))
+    {
+        bool bPlayWhenInc = GetConVarBool(b_PlayWhenIncapacitated);
+        bool bPlayToRec   = GetConVarBool(b_PlayingToRecord);
+        bool bOnlySetVel  = GetConVarBool(b_OnlySetVel);
+        float fTimeScale  = GetConVarFloat(FindConVar("host_timescale"));
+        
+        return HandleReplayPlayback(client, buttons, wishvel, wishangles, weapon,
+            g_hOnPlayTick, bPlayWhenInc, bPlayToRec, bOnlySetVel, fTimeScale);
+    }
+    
+    return Plugin_Continue;
 }
 
 //=============================================================================
@@ -266,8 +266,8 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishv
  */
 public void OnPlayerRunCmdPost(int client)
 {
-	// 中心文字显示已移至 HandleReplayRewind 和 HandleReplayPlayback 内部
-	// 此处不再处理，避免时序问题（OnPlayerRunCmd 中可能重置播放状态）
+    // 中心文字显示已移至 HandleReplayRewind 和 HandleReplayPlayback 内部
+    // 此处不再处理，避免时序问题（OnPlayerRunCmd 中可能重置播放状态）
 }
 
 //=============================================================================
@@ -279,12 +279,12 @@ public void OnPlayerRunCmdPost(int client)
  */
 public Action OnPlayerDisconnect(Event event, const char[] name, bool dontBroadcast)
 {
-	int userid = GetEventInt(event, "userid");
-	int client = GetClientOfUserId(userid);
-	if (client < 1) return Plugin_Continue;
-	
-	ResetPlayerReplaySegment(client);
-	return Plugin_Continue;
+    int userid = GetEventInt(event, "userid");
+    int client = GetClientOfUserId(userid);
+    if (client < 1) return Plugin_Continue;
+    
+    ResetPlayerReplaySegment(client);
+    return Plugin_Continue;
 }
 
 /**
@@ -292,18 +292,18 @@ public Action OnPlayerDisconnect(Event event, const char[] name, bool dontBroadc
  */
 public void OnGameEvent(Event event, const char[] name, bool dontBroadcast)
 {
-	if (StrEqual(name, "map_transition"))
-	{
-		char cmdbuf[128];
-		for (int i = 1; i <= MAXCLIENTS; i++)
-		{
-			if (IsClientInGame(i) && IsPlayerAlive(i) && Player_GetIsSegmenting(i))
-			{
-				Format(cmdbuf, sizeof(cmdbuf), "sm_replaysave %d", i);
-				ClientCommand(i, cmdbuf);
-			}
-		}
-	}
+    if (StrEqual(name, "map_transition"))
+    {
+        char cmdbuf[128];
+        for (int i = 1; i <= MAXCLIENTS; i++)
+        {
+            if (IsClientInGame(i) && IsPlayerAlive(i) && Player_GetIsSegmenting(i))
+            {
+                Format(cmdbuf, sizeof(cmdbuf), "sm_replaysave %d", i);
+                ClientCommand(i, cmdbuf);
+            }
+        }
+    }
 }
 
 /**
@@ -311,11 +311,11 @@ public void OnGameEvent(Event event, const char[] name, bool dontBroadcast)
  */
 public void Event_PlayerBotReplace(Event event, const char[] name, bool dontBroadcast)
 {
-	int client = GetClientOfUserId(GetEventInt(event, "player"));
-	if (client > 0)
-	{
-		Player_AddIdleFlags(client, StrEqual(name, "player_bot_replace") ? IN_IDLE : IN_TAKEOVER);
-	}
+    int client = GetClientOfUserId(GetEventInt(event, "player"));
+    if (client > 0)
+    {
+        Player_AddIdleFlags(client, StrEqual(name, "player_bot_replace") ? IN_IDLE : IN_TAKEOVER);
+    }
 }
 
 /**
@@ -323,20 +323,20 @@ public void Event_PlayerBotReplace(Event event, const char[] name, bool dontBroa
  */
 public void Event_PlayerUse(Event event, const char[] name, bool dontBroadcast)
 {
-	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if (Player_GetIsPlayingReplay(client))
-	{
-		int entity = GetEventInt(event, "targetid");
-		char sName[64];
-		GetEntityClassname(entity, sName, sizeof(sName));
-		if (StrContains(sName, "prop_door_rotating") != -1)
-		{
-			if (!GetEntProp(entity, Prop_Send, "m_eDoorState"))
-				AcceptEntityInput(entity, "PlayerOpen", client);
-			else
-				AcceptEntityInput(entity, "PlayerClose", client);
-		}
-	}
+    int client = GetClientOfUserId(GetEventInt(event, "userid"));
+    if (Player_GetIsPlayingReplay(client))
+    {
+        int entity = GetEventInt(event, "targetid");
+        char sName[64];
+        GetEntityClassname(entity, sName, sizeof(sName));
+        if (StrContains(sName, "prop_door_rotating") != -1)
+        {
+            if (!GetEntProp(entity, Prop_Send, "m_eDoorState"))
+                AcceptEntityInput(entity, "PlayerOpen", client);
+            else
+                AcceptEntityInput(entity, "PlayerClose", client);
+        }
+    }
 }
 
 /**
@@ -344,7 +344,7 @@ public void Event_PlayerUse(Event event, const char[] name, bool dontBroadcast)
  */
 public void OnMapEnd()
 {
-	ForceStopAllReplays();
+    ForceStopAllReplays();
 }
 
 /**
@@ -352,7 +352,7 @@ public void OnMapEnd()
  */
 public void OnClientDisconnect(int client)
 {
-	ResetPlayerReplaySegment(client);
+    ResetPlayerReplaySegment(client);
 }
 
 //=============================================================================
@@ -369,39 +369,39 @@ public void OnClientDisconnect(int client)
  */
 stock bool ST_Idle(int client, bool bType = false)
 {
-	if (IsClientInGame(client) && !IsPlayerABot(client))
-	{
-		if (bType)
-		{
-			if (GetClientTeam(client) == 1)
-			{
-				SDKCall(g_hTakeOverBot, client);
-				return true;
-			}
-		}
-		else
-		{
-			if (GetClientTeam(client) == 2 && IsPlayerAlive(client))
-			{
-				if (GetConVarBool(g_ConVar_ReplayIdleAnytime))
-				{
-					SDKCall(g_hGoAwayFromKeyboard, client);
-					PrintToChatAll("[ST_Idle] %N is now idle.", client);
-					return true;
-				}
-				for (int i = 1; i <= MaxClients; i++)
-				{
-					if (IsClientInGame(i) && !IsPlayerABot(i) && IsPlayerAlive(i) && client != i && GetClientTeam(i) == 2)
-					{
-						SDKCall(g_hGoAwayFromKeyboard, client);
-						PrintToChatAll("%N is now idle.", client);
-						return true;
-					}
-				}
-			}
-		}
-	}
-	return false;
+    if (IsClientInGame(client) && !IsPlayerABot(client))
+    {
+        if (bType)
+        {
+            if (GetClientTeam(client) == 1)
+            {
+                SDKCall(g_hTakeOverBot, client);
+                return true;
+            }
+        }
+        else
+        {
+            if (GetClientTeam(client) == 2 && IsPlayerAlive(client))
+            {
+                if (GetConVarBool(g_ConVar_ReplayIdleAnytime))
+                {
+                    SDKCall(g_hGoAwayFromKeyboard, client);
+                    PrintToChatAll("[ST_Idle] %N is now idle.", client);
+                    return true;
+                }
+                for (int i = 1; i <= MaxClients; i++)
+                {
+                    if (IsClientInGame(i) && !IsPlayerABot(i) && IsPlayerAlive(i) && client != i && GetClientTeam(i) == 2)
+                    {
+                        SDKCall(g_hGoAwayFromKeyboard, client);
+                        PrintToChatAll("%N is now idle.", client);
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
 }
 
 /**
@@ -409,7 +409,7 @@ stock bool ST_Idle(int client, bool bType = false)
  */
 stock bool IsPlayer(int client)
 {
-	return (client > 0 && client <= MaxClients && IsClientInGame(client));
+    return (client > 0 && client <= MaxClients && IsClientInGame(client));
 }
 
 /**
@@ -417,7 +417,7 @@ stock bool IsPlayer(int client)
  */
 stock bool IsPlayerABot(int client)
 {
-	return (GetEntityFlags(client) & FL_FAKECLIENT) ? true : false;
+    return (GetEntityFlags(client) & FL_FAKECLIENT) ? true : false;
 }
 
 /**
@@ -425,8 +425,8 @@ stock bool IsPlayerABot(int client)
  */
 stock float GetHealthBuffer(int client)
 {
-	float fHealthTemp = GetEntPropFloat(client, Prop_Send, "m_healthBuffer")
-		- ((GetGameTime() - GetEntPropFloat(client, Prop_Send, "m_healthBufferTime"))
-		* GetConVarFloat(FindConVar("pain_pills_decay_rate")));
-	return fHealthTemp > 0.0 ? fHealthTemp : 0.0;
+    float fHealthTemp = GetEntPropFloat(client, Prop_Send, "m_healthBuffer")
+        - ((GetGameTime() - GetEntPropFloat(client, Prop_Send, "m_healthBufferTime"))
+        * GetConVarFloat(FindConVar("pain_pills_decay_rate")));
+    return fHealthTemp > 0.0 ? fHealthTemp : 0.0;
 }

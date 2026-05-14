@@ -45,20 +45,20 @@ static float g_fSmoothPrevFrameAngles[2];
  */
 public void SetPlayerReplayFrame(int source, int target, int frame)
 {
-	any frameinfo[FRAME_Length];
-	Player_GetFrame(source, frame, frameinfo);
-	
-	float pos[3];
-	float frameangles[2];
-	float velocity[3];
-	GetArrayVector3(frameinfo, FRAME_PosX, pos);
-	GetArrayVector2(frameinfo, FRAME_AngX, frameangles);
-	GetArrayVector3(frameinfo, FRAME_VelX, velocity);
-	
-	float viewangles[3];
-	CopyVector2ToVector3(frameangles, viewangles);
-	
-	TeleportEntity(target, pos, viewangles, velocity);
+    any frameinfo[FRAME_Length];
+    Player_GetFrame(source, frame, frameinfo);
+    
+    float pos[3];
+    float frameangles[2];
+    float velocity[3];
+    GetArrayVector3(frameinfo, FRAME_PosX, pos);
+    GetArrayVector2(frameinfo, FRAME_AngX, frameangles);
+    GetArrayVector3(frameinfo, FRAME_VelX, velocity);
+    
+    float viewangles[3];
+    CopyVector2ToVector3(frameangles, viewangles);
+    
+    TeleportEntity(target, pos, viewangles, velocity);
 }
 
 /**
@@ -69,45 +69,45 @@ public void SetPlayerReplayFrame(int source, int target, int frame)
  */
 public void HandleReplayRewind(int client)
 {
-	int lastindex = Player_GetRecordedFramesCount(client) - 1;
-	int factor = Player_GetRewindSpeed(client);
-	int curframe = Player_GetRewindFrame(client);
-	
-	if (Player_GetHasRewindKeyDown(client))
-	{
-		Player_SetRewindFrame(client, curframe - factor);
-	}
-	
-	if (Player_GetHasFastForwardKeyDown(client))
-	{
-		Player_SetRewindFrame(client, curframe + factor);
-	}
-	
-	curframe = Player_GetRewindFrame(client);
-	
-	if (curframe < 0)
-	{
-		Player_SetRewindFrame(client, 0);
-	}
-	else if (curframe > lastindex)
-	{
-		Player_SetRewindFrame(client, lastindex);
-	}
-	
-	// 显示当前帧信息（暂停/倒带时始终显示，不依赖 ConVar）
-	curframe = Player_GetRewindFrame(client);
-	if (lastindex > 0)
-	{
-		float tickinterval = GetTickInterval();
-		int timeframe = curframe - Player_GetStartTimeReplayTick(client);
-		if (timeframe < 0) timeframe = 0;
-		
-		float curtime = timeframe * tickinterval;
-		char curtimebuf[64];
-		FormatTimeSpan(curtimebuf, sizeof(curtimebuf), curtime);
-		
-		PrintCenterText(client, "%d / %d\nTime: %s", curframe, lastindex, curtimebuf);
-	}
+    int lastindex = Player_GetRecordedFramesCount(client) - 1;
+    int factor = Player_GetRewindSpeed(client);
+    int curframe = Player_GetRewindFrame(client);
+    
+    if (Player_GetHasRewindKeyDown(client))
+    {
+        Player_SetRewindFrame(client, curframe - factor);
+    }
+    
+    if (Player_GetHasFastForwardKeyDown(client))
+    {
+        Player_SetRewindFrame(client, curframe + factor);
+    }
+    
+    curframe = Player_GetRewindFrame(client);
+    
+    if (curframe < 0)
+    {
+        Player_SetRewindFrame(client, 0);
+    }
+    else if (curframe > lastindex)
+    {
+        Player_SetRewindFrame(client, lastindex);
+    }
+    
+    // 显示当前帧信息（暂停/倒带时始终显示，不依赖 ConVar）
+    curframe = Player_GetRewindFrame(client);
+    if (lastindex > 0)
+    {
+        float tickinterval = GetTickInterval();
+        int timeframe = curframe - Player_GetStartTimeReplayTick(client);
+        if (timeframe < 0) timeframe = 0;
+        
+        float curtime = timeframe * tickinterval;
+        char curtimebuf[64];
+        FormatTimeSpan(curtimebuf, sizeof(curtimebuf), curtime);
+        
+        PrintCenterText(client, "%d / %d\nTime: %s", curframe, lastindex, curtimebuf);
+    }
 }
 
 /**
@@ -125,58 +125,58 @@ public void HandleReplayRewind(int client)
  * @return             true 表示已处理（不继续走普通播放路径）。
  */
 static bool HandleAngleSmoothTransition(int client, int buttons,
-	float pos[3], float velocity[3], float fPlaybackTimeScale)
+    float pos[3], float velocity[3], float fPlaybackTimeScale)
 {
-	bool handled = false;
-	
-	if (buttons & IN_ZOOM)
-	{
-		// 锁定视角：设置位置和速度，但不设置角度
-		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
-		DispatchKeyValueVector(client, "origin", pos);
-		Player_SetAngleSmooth(client, g_iAngleSmoothTickCount);
-		SetConVarFloat(FindConVar("host_timescale"), 0.08, true, true);
-		handled = true;
-	}
-	else
-	{
-		int iSmooth = Player_GetAngleSmooth(client);
-		if (iSmooth > 0)
-		{
-			// 视角平滑过渡中
-			int preframeang = Player_GetRewindFrame(client) + g_iAngleSmoothTickCount;
-			int frameCount = Player_GetRecordedFramesCount(client);
-			if (preframeang >= frameCount)
-			{
-				preframeang = frameCount - 1;
-			}
-			
-			any preframeinfoang[FRAME_Length];
-			Player_GetFrame(client, preframeang, preframeinfoang);
-			GetArrayVector2(preframeinfoang, FRAME_AngX, g_fSmoothPrevFrameAngles);
-			
-			if (iSmooth == g_iAngleSmoothTickCount)
-			{
-				g_fSmoothRefFrameAngles = g_fSmoothPrevFrameAngles;
-				GetClientEyeAngles(client, g_fSmoothCurrentAngles);
-				SetConVarFloat(FindConVar("host_timescale"), fPlaybackTimeScale, true, true);
-			}
-			
-			float outang[2];
-			outang[0] = LinearInterPolation(g_fSmoothCurrentAngles[0], g_fSmoothRefFrameAngles[0],
-				g_iAngleSmoothTickCount - iSmooth, g_iAngleSmoothTickCount);
-			outang[1] = LinearInterPolation(g_fSmoothCurrentAngles[1], g_fSmoothRefFrameAngles[1],
-				g_iAngleSmoothTickCount - iSmooth, g_iAngleSmoothTickCount);
-			
-			CopyVector2ToVector3(outang, g_fSmoothOutViewAngles);
-			TeleportEntity(client, NULL_VECTOR, g_fSmoothOutViewAngles, velocity);
-			DispatchKeyValueVector(client, "origin", pos);
-			Player_SetAngleSmooth(client, iSmooth - 1);
-			handled = true;
-		}
-	}
-	
-	return handled;
+    bool handled = false;
+    
+    if (buttons & IN_ZOOM)
+    {
+        // 锁定视角：设置位置和速度，但不设置角度
+        TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
+        DispatchKeyValueVector(client, "origin", pos);
+        Player_SetAngleSmooth(client, g_iAngleSmoothTickCount);
+        SetConVarFloat(FindConVar("host_timescale"), 0.08, true, true);
+        handled = true;
+    }
+    else
+    {
+        int iSmooth = Player_GetAngleSmooth(client);
+        if (iSmooth > 0)
+        {
+            // 视角平滑过渡中
+            int preframeang = Player_GetRewindFrame(client) + g_iAngleSmoothTickCount;
+            int frameCount = Player_GetRecordedFramesCount(client);
+            if (preframeang >= frameCount)
+            {
+                preframeang = frameCount - 1;
+            }
+            
+            any preframeinfoang[FRAME_Length];
+            Player_GetFrame(client, preframeang, preframeinfoang);
+            GetArrayVector2(preframeinfoang, FRAME_AngX, g_fSmoothPrevFrameAngles);
+            
+            if (iSmooth == g_iAngleSmoothTickCount)
+            {
+                g_fSmoothRefFrameAngles = g_fSmoothPrevFrameAngles;
+                GetClientEyeAngles(client, g_fSmoothCurrentAngles);
+                SetConVarFloat(FindConVar("host_timescale"), fPlaybackTimeScale, true, true);
+            }
+            
+            float outang[2];
+            outang[0] = LinearInterPolation(g_fSmoothCurrentAngles[0], g_fSmoothRefFrameAngles[0],
+                g_iAngleSmoothTickCount - iSmooth, g_iAngleSmoothTickCount);
+            outang[1] = LinearInterPolation(g_fSmoothCurrentAngles[1], g_fSmoothRefFrameAngles[1],
+                g_iAngleSmoothTickCount - iSmooth, g_iAngleSmoothTickCount);
+            
+            CopyVector2ToVector3(outang, g_fSmoothOutViewAngles);
+            TeleportEntity(client, NULL_VECTOR, g_fSmoothOutViewAngles, velocity);
+            DispatchKeyValueVector(client, "origin", pos);
+            Player_SetAngleSmooth(client, iSmooth - 1);
+            handled = true;
+        }
+    }
+    
+    return handled;
 }
 
 /**
@@ -189,63 +189,63 @@ static bool HandleAngleSmoothTransition(int client, int buttons,
  */
 static bool HandleLinearSmoothTransition(int client, float velocity[3])
 {
-	int linetick = Player_GetSmoothLineTickCount(client);
-	int iLineSmooth = Player_GetSmoothLineDecrement(client);
-	
-	if (iLineSmooth == linetick)
-	{
-		// 初始化平滑数据
-		float pos_start[3];
-		float viewangles_start[3];
-		GetClientAbsOrigin(client, pos_start);
-		GetClientEyeAngles(client, viewangles_start);
-		
-		Player_SetSmoothStartPos(client, pos_start);
-		Player_SetSmoothStartAngles(client, viewangles_start);
-		
-		any frameinfo_linesmooth[FRAME_Length];
-		Player_GetFrame(client, Player_GetEndFrame(client), frameinfo_linesmooth);
-		
-		float pos_end[3];
-		float frameangles_end[2];
-		GetArrayVector3(frameinfo_linesmooth, FRAME_PosX, pos_end);
-		GetArrayVector2(frameinfo_linesmooth, FRAME_AngX, frameangles_end);
-		
-		Player_SetSmoothEndPos(client, pos_end);
-		Player_SetSmoothEndFrameAngles(client, frameangles_end);
-	}
-	
-	if (iLineSmooth > 0)
-	{
-		float startPos[3], endPos[3], startAng[3], endFrameAng[2];
-		Player_GetSmoothStartPos(client, startPos);
-		Player_GetSmoothEndPos(client, endPos);
-		Player_GetSmoothStartAngles(client, startAng);
-		Player_GetSmoothEndFrameAngles(client, endFrameAng);
-		
-		float outpos[3], outang[2], viewangles_line[3];
-		
-		outpos[0] = LinearInterPolation_Pos(startPos[0], endPos[0], linetick - iLineSmooth, linetick);
-		outpos[1] = LinearInterPolation_Pos(startPos[1], endPos[1], linetick - iLineSmooth, linetick);
-		outpos[2] = LinearInterPolation_Pos(startPos[2], endPos[2], linetick - iLineSmooth, linetick);
-		
-		outang[0] = LinearInterPolation(startAng[0], endFrameAng[0], linetick - iLineSmooth, linetick);
-		outang[1] = LinearInterPolation(startAng[1], endFrameAng[1], linetick - iLineSmooth, linetick);
-		CopyVector2ToVector3(outang, viewangles_line);
-		
-		TeleportEntity(client, NULL_VECTOR, viewangles_line, velocity);
-		DispatchKeyValueVector(client, "origin", outpos);
-		
-		Player_SetSmoothLineDecrement(client, iLineSmooth - 1);
-		
-		return true;
-	}
-	else
-	{
-		// 平滑结束
-		Player_SetIsLinearTransition(client, false);
-		return false;
-	}
+    int linetick = Player_GetSmoothLineTickCount(client);
+    int iLineSmooth = Player_GetSmoothLineDecrement(client);
+    
+    if (iLineSmooth == linetick)
+    {
+        // 初始化平滑数据
+        float pos_start[3];
+        float viewangles_start[3];
+        GetClientAbsOrigin(client, pos_start);
+        GetClientEyeAngles(client, viewangles_start);
+        
+        Player_SetSmoothStartPos(client, pos_start);
+        Player_SetSmoothStartAngles(client, viewangles_start);
+        
+        any frameinfo_linesmooth[FRAME_Length];
+        Player_GetFrame(client, Player_GetEndFrame(client), frameinfo_linesmooth);
+        
+        float pos_end[3];
+        float frameangles_end[2];
+        GetArrayVector3(frameinfo_linesmooth, FRAME_PosX, pos_end);
+        GetArrayVector2(frameinfo_linesmooth, FRAME_AngX, frameangles_end);
+        
+        Player_SetSmoothEndPos(client, pos_end);
+        Player_SetSmoothEndFrameAngles(client, frameangles_end);
+    }
+    
+    if (iLineSmooth > 0)
+    {
+        float startPos[3], endPos[3], startAng[3], endFrameAng[2];
+        Player_GetSmoothStartPos(client, startPos);
+        Player_GetSmoothEndPos(client, endPos);
+        Player_GetSmoothStartAngles(client, startAng);
+        Player_GetSmoothEndFrameAngles(client, endFrameAng);
+        
+        float outpos[3], outang[2], viewangles_line[3];
+        
+        outpos[0] = LinearInterPolation_Pos(startPos[0], endPos[0], linetick - iLineSmooth, linetick);
+        outpos[1] = LinearInterPolation_Pos(startPos[1], endPos[1], linetick - iLineSmooth, linetick);
+        outpos[2] = LinearInterPolation_Pos(startPos[2], endPos[2], linetick - iLineSmooth, linetick);
+        
+        outang[0] = LinearInterPolation(startAng[0], endFrameAng[0], linetick - iLineSmooth, linetick);
+        outang[1] = LinearInterPolation(startAng[1], endFrameAng[1], linetick - iLineSmooth, linetick);
+        CopyVector2ToVector3(outang, viewangles_line);
+        
+        TeleportEntity(client, NULL_VECTOR, viewangles_line, velocity);
+        DispatchKeyValueVector(client, "origin", outpos);
+        
+        Player_SetSmoothLineDecrement(client, iLineSmooth - 1);
+        
+        return true;
+    }
+    else
+    {
+        // 平滑结束
+        Player_SetIsLinearTransition(client, false);
+        return false;
+    }
 }
 
 /**
@@ -260,66 +260,66 @@ static bool HandleLinearSmoothTransition(int client, float velocity[3])
  * @param bOnlySetVel  是否仅设置速度（跳过部分地面移动按键）。
  */
 public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_Length],
-	any frameinfo_action[FRAME_Length], bool bOnlySetVel)
+    any frameinfo_action[FRAME_Length], bool bOnlySetVel)
 {
-	int ibuttons = frameinfo[FRAME_Buttons];
-	int ibuttonsEx = frameinfo_action[FRAME_Buttons];
-	
-	if (!IsFakeClient(client) || (GetClientTeam(client) == 3))
-	{
-		if (ibuttons & IN_JUMP) buttons |= IN_JUMP;
-		else buttons &= ~IN_JUMP;
-		
-		if (ibuttons & IN_DUCK) ClientCommand(client, "+duck");
-		else ClientCommand(client, "-duck");
-		
-		// 爬梯时 FL_ONGROUND 为 false，移除该限制使 +forward 能正常发送
-		if (ibuttons & IN_FORWARD && !bOnlySetVel)
-			ClientCommand(client, "+forward");
-		else ClientCommand(client, "-forward");
-		
-		if (ibuttons & IN_BACK && !bOnlySetVel)
-			ClientCommand(client, "+back");
-		else ClientCommand(client, "-back");
-		
-		if (ibuttons & IN_LEFT && !bOnlySetVel)
-			ClientCommand(client, "+left");
-		else ClientCommand(client, "-left");
-		
-		if (ibuttons & IN_RIGHT && !bOnlySetVel)
-			ClientCommand(client, "+right");
-		else ClientCommand(client, "-right");
+    int ibuttons = frameinfo[FRAME_Buttons];
+    int ibuttonsEx = frameinfo_action[FRAME_Buttons];
+    
+    if (!IsFakeClient(client) || (GetClientTeam(client) == 3))
+    {
+        if (ibuttons & IN_JUMP) buttons |= IN_JUMP;
+        else buttons &= ~IN_JUMP;
+        
+        if (ibuttons & IN_DUCK) ClientCommand(client, "+duck");
+        else ClientCommand(client, "-duck");
+        
+        // 爬梯时 FL_ONGROUND 为 false，移除该限制使 +forward 能正常发送
+        if (ibuttons & IN_FORWARD && !bOnlySetVel)
+            ClientCommand(client, "+forward");
+        else ClientCommand(client, "-forward");
+        
+        if (ibuttons & IN_BACK && !bOnlySetVel)
+            ClientCommand(client, "+back");
+        else ClientCommand(client, "-back");
+        
+        if (ibuttons & IN_LEFT && !bOnlySetVel)
+            ClientCommand(client, "+left");
+        else ClientCommand(client, "-left");
+        
+        if (ibuttons & IN_RIGHT && !bOnlySetVel)
+            ClientCommand(client, "+right");
+        else ClientCommand(client, "-right");
 
-		if (ibuttons & IN_MOVELEFT && !bOnlySetVel)
-			ClientCommand(client, "+moveleft");
-		else ClientCommand(client, "-moveleft");
+        if (ibuttons & IN_MOVELEFT && !bOnlySetVel)
+            ClientCommand(client, "+moveleft");
+        else ClientCommand(client, "-moveleft");
 
-		if (ibuttons & IN_MOVERIGHT && !bOnlySetVel)
-			ClientCommand(client, "+moveright");
-		else ClientCommand(client, "-moveright");
+        if (ibuttons & IN_MOVERIGHT && !bOnlySetVel)
+            ClientCommand(client, "+moveright");
+        else ClientCommand(client, "-moveright");
 
-		if (ibuttons & IN_ATTACK2) ClientCommand(client, "+attack2");
-		else ClientCommand(client, "-attack2");
-		
-		if (ibuttons & IN_RELOAD) ClientCommand(client, "+reload");
-		else ClientCommand(client, "-reload");
-	}
-	
-	// 扩展按键（下一帧）：+use 使用 ibuttonsEx（因为开门需要提前1tick）
-	if (ibuttonsEx & IN_USE) ClientCommand(client, "+use");
-	else ClientCommand(client, "-use");
+        if (ibuttons & IN_ATTACK2) ClientCommand(client, "+attack2");
+        else ClientCommand(client, "-attack2");
+        
+        if (ibuttons & IN_RELOAD) ClientCommand(client, "+reload");
+        else ClientCommand(client, "-reload");
+    }
+    
+    // 扩展按键（下一帧）：+use 使用 ibuttonsEx（因为开门需要提前1tick）
+    if (ibuttonsEx & IN_USE) ClientCommand(client, "+use");
+    else ClientCommand(client, "-use");
 
-	// 攻击按键直接从 ibuttons（当前帧）处理，不再使用计数器。
-	// 原因：用 ibuttonsEx + 计数器的方式，当播放因地图过渡等被中断时，
-	// counter 无法递减到 0，导致 -attack 永远发不出，左键卡死。
-	if (ibuttons & IN_ATTACK)
-	{
-		ClientCommand(client, "+attack");
-	}
-	else
-	{
-		ClientCommand(client, "-attack");
-	}
+    // 攻击按键直接从 ibuttons（当前帧）处理，不再使用计数器。
+    // 原因：用 ibuttonsEx + 计数器的方式，当播放因地图过渡等被中断时，
+    // counter 无法递减到 0，导致 -attack 永远发不出，左键卡死。
+    if (ibuttons & IN_ATTACK)
+    {
+        ClientCommand(client, "+attack");
+    }
+    else
+    {
+        ClientCommand(client, "-attack");
+    }
 }
 
 /**
@@ -340,254 +340,254 @@ public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_
  * @return                   Action 值。
  */
 public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], float wishangles[3],
-	int& weapon, Handle hOnPlayTick, bool bPlayWhenIncapacitated, bool bPlayingToRecord,
-	bool bOnlySetVel, float fPlaybackTimeScale)
+    int& weapon, Handle hOnPlayTick, bool bPlayWhenIncapacitated, bool bPlayingToRecord,
+    bool bOnlySetVel, float fPlaybackTimeScale)
 {
-	// 倒地检查
-	if (!bPlayWhenIncapacitated)
-	{
-		if (GetEntProp(client, Prop_Send, "m_isIncapacitated") != 0)
-		{
-			return Plugin_Continue;
-		}
-	}
-	
-	// 暂停检查
-	if (Player_GetIsPauseWhilePlaying(client))
-	{
-		// 暂停时保持位置不动
-		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, Float:{0.0, 0.0, 0.0});
-		return Plugin_Continue;
-	}
+    // 倒地检查
+    if (!bPlayWhenIncapacitated)
+    {
+        if (GetEntProp(client, Prop_Send, "m_isIncapacitated") != 0)
+        {
+            return Plugin_Continue;
+        }
+    }
+    
+    // 暂停检查
+    if (Player_GetIsPauseWhilePlaying(client))
+    {
+        // 暂停时保持位置不动
+        TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, Float:{0.0, 0.0, 0.0});
+        return Plugin_Continue;
+    }
 
-	// =========================================================
-	// 多人同步开始：武装玩家等待统一起始 tick
-	// =========================================================
-	if (g_iReplaySyncStartTick > 0 && g_bReplaySyncArmed[client])
-	{
-		if (GetGameTickCount() >= g_iReplaySyncStartTick)
-		{
-			g_bReplaySyncArmed[client] = false;
-			Player_SetIsRewinding(client, false);
-		}
-		else
-		{
-			Player_SetPlaybackButtons(client, 0);
-			Player_SetPlaybackButtonsEx(client, 0);
-			TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, Float:{0.0, 0.0, 0.0});
-			return Plugin_Changed;
-		}
-	}
+    // =========================================================
+    // 多人同步开始：武装玩家等待统一起始 tick
+    // =========================================================
+    if (g_iReplaySyncStartTick > 0 && g_bReplaySyncArmed[client])
+    {
+        if (GetGameTickCount() >= g_iReplaySyncStartTick)
+        {
+            g_bReplaySyncArmed[client] = false;
+            Player_SetIsRewinding(client, false);
+        }
+        else
+        {
+            Player_SetPlaybackButtons(client, 0);
+            Player_SetPlaybackButtonsEx(client, 0);
+            TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, Float:{0.0, 0.0, 0.0});
+            return Plugin_Changed;
+        }
+    }
 
-	bool normalproc = true;
-	int curframe = Player_GetRewindFrame(client);
-	
-	any frameinfo[FRAME_Length];
-	Player_GetFrame(client, curframe, frameinfo);
-	
-	// 下一帧数据用于按键延迟处理
-	any frameinfo_action[FRAME_Length];
-	Player_GetFrame(client, curframe + 1, frameinfo_action);
-	
-	// 提取帧数据
-	float pos[3];
-	float frameangles[2];
-	float velocity[3];
-	GetArrayVector3(frameinfo, FRAME_PosX, pos);
-	GetArrayVector2(frameinfo, FRAME_AngX, frameangles);
-	GetArrayVector3(frameinfo, FRAME_VelX, velocity);
-	
-	float viewangles[3];
-	CopyVector2ToVector3(frameangles, viewangles);
-	
-	// =========================================================
-	// StopFrame 处理：播放转录制 / 播放停止
-	// =========================================================
-	int stopFrame = Player_GetStopFrame(client);
-	if (stopFrame > 0 && !IsFakeClient(client))
-	{
-		if (curframe == stopFrame && bPlayingToRecord)
-		{
-			// 播放转录制
-			normalproc = false;
-			HandleReplayRewind(client);
-			TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
-			DispatchKeyValueVector(client, "origin", pos);
-			
-			int endframe = Player_GetRewindFrame(client) + 1;
-			int framecount = Player_GetRecordedFramesCount(client) - 1;
-			if (endframe > framecount)
-			{
-				endframe = framecount;
-			}
-			
-			Player_ResizeRecordFrameList(client, endframe);
-			Player_SetIsRewinding(client, true);
-			Player_SetIsSegmenting(client, true);
-			Player_SetHasRun(client, false);
-			Player_SetPlayingReplay(client, false);
-			SetEntityMoveType(client, MOVETYPE_NONE);
-			Player_SetRewindFrame(client, endframe - 1);
-			
-			ResetButton(client);
-			ClientCommand(client, "slot1");
-			
-			STR_PrintMessageToAllClients("%N的Replay已经从%d帧继续.", client, endframe);
-			return Plugin_Changed;
-		}
-		else if (curframe == stopFrame)
-		{
-			// 播放到指定帧停止
-			Player_ResetAllReplayState(client);
-			ResetButton(client);
-			if (IsClientInGame(client) && GetClientTeam(client) != 1)
-			{
-				SetEntityMoveType(client, MOVETYPE_WALK);
-			}
-			STR_PrintMessageToAllClients("%N的Replay在%d帧停止.", client, curframe);
-			return Plugin_Continue;
-		}
-	}
-	
-	// =========================================================
-	// 暂停（倒带/快进）处理
-	// =========================================================
-	if (Player_GetIsRewinding(client))
-	{
-		normalproc = false;
-		HandleReplayRewind(client);
-		TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
-		DispatchKeyValueVector(client, "origin", pos);
-	}
-	
-	// =========================================================
-	// 武器切换
-	// =========================================================
-	if (frameinfo[FRAME_WEAPON] > 0 && frameinfo[FRAME_MOVETYPE] != MOVETYPE_LADDER)
-	{
-		FakeClientCommand(client, "use %s", g_Items[frameinfo[FRAME_WEAPON]]);
-	}
-	
-	// =========================================================
-	// 按键注入
-	// =========================================================
-	InjectPlaybackButtons(client, buttons, frameinfo, frameinfo_action, bOnlySetVel);
-	
-	// =========================================================
-	// 位置/角度/速度应用
-	// =========================================================
-	if (curframe == 0)
-	{
-		// 第一帧保存当前倍速快照，并强制设置位置/角度/速度
-		Player_SetPlaybackTimeScale(client, GetConVarFloat(FindConVar("host_timescale")));
-		TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
-		DispatchKeyValueVector(client, "origin", pos);
-	}
-	else
-	{
-		// 线性平滑处理
-		if (Player_GetIsLinearTransition(client))
-		{
-			if (HandleLinearSmoothTransition(client, velocity))
-			{
-				// 平滑已完成此帧处理
-			}
-			else
-			{
-				// 平滑结束，使用正常帧数据
-				TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
-				DispatchKeyValueVector(client, "origin", pos);
-			}
-		}
-		else
-		{
-			// 自由视角平滑过渡（仅对真人玩家）
-			if (!IsFakeClient(client))
-			{
-				int curButtons = GetClientButtons(client);
-				bool bOnlySetVelConVar = view_as<bool>(GetConVarBool(FindConVar("str_onlysetvel")));
-				
-				if (bOnlySetVelConVar)
-				{
-					// 仅设置速度模式
-					TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
-					DispatchKeyValueVector(client, "origin", pos);
-					Player_SetAngleSmooth(client, g_iAngleSmoothTickCount);
-				}
-				else if (!HandleAngleSmoothTransition(client, curButtons, pos, velocity, Player_GetPlaybackTimeScale(client)))
-				{
-					// 正常播放路径
-					ApplyPlaybackPosition(client, frameinfo, viewangles, velocity, pos, buttons, wishvel);
-				}
-			}
-			else
-			{
-				if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
-				{
-					TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
-				}
-				else
-				{
-					// 非爬梯帧恢复 MOVETYPE_WALK，防止爬梯状态残留
-					SetEntityMoveType(client, MOVETYPE_WALK);
-					TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
-				}
-				DispatchKeyValueVector(client, "origin", pos);
-				buttons = frameinfo[FRAME_Buttons];
-			}
-		}
-	}
-	
-	// =========================================================
-	// 帧推进 & 结束检测
-	// =========================================================
-	if (normalproc)
-	{
-		Player_IncrementRewindFrame(client);
-		curframe = Player_GetRewindFrame(client);
-		int length = Player_GetRecordedFramesCount(client);
-		
-		// 触发 OnPlayTick 转发
-		if (hOnPlayTick != INVALID_HANDLE)
-		{
-			Call_StartForward(hOnPlayTick);
-			Call_PushCell(client);
-			Call_PushCell(curframe);
-			Call_Finish();
-		}
-		
-		char sKeyValue[128];
-		Format(sKeyValue, sizeof(sKeyValue), "if (\"OnPlayTick\" in getroottable()) OnPlayTick(self, %d)", curframe);
-		SetVariantString(sKeyValue);
-		AcceptEntityInput(client, "RunScriptCode");
-		
-		// 显示帧信息（正常播放时受 sm_showframe 控制）
-		if (GetConVarBool(FindConVar("sm_showframe")))
-		{
-			float tickinterval = GetTickInterval();
-			char curtimebuf[64];
-			FormatTimeSpan(curtimebuf, sizeof(curtimebuf), curframe * tickinterval);
-			PrintCenterText(client, "%d / %d\nTime: %s", curframe, length - 1, curtimebuf);
-		}
-		
-		// 播放结束检测
-		if (curframe >= length - 2)
-		{
-			Player_SetRewindFrame(client, length - 1);
-			Player_SetIsRewinding(client, false);
+    bool normalproc = true;
+    int curframe = Player_GetRewindFrame(client);
+    
+    any frameinfo[FRAME_Length];
+    Player_GetFrame(client, curframe, frameinfo);
+    
+    // 下一帧数据用于按键延迟处理
+    any frameinfo_action[FRAME_Length];
+    Player_GetFrame(client, curframe + 1, frameinfo_action);
+    
+    // 提取帧数据
+    float pos[3];
+    float frameangles[2];
+    float velocity[3];
+    GetArrayVector3(frameinfo, FRAME_PosX, pos);
+    GetArrayVector2(frameinfo, FRAME_AngX, frameangles);
+    GetArrayVector3(frameinfo, FRAME_VelX, velocity);
+    
+    float viewangles[3];
+    CopyVector2ToVector3(frameangles, viewangles);
+    
+    // =========================================================
+    // StopFrame 处理：播放转录制 / 播放停止
+    // =========================================================
+    int stopFrame = Player_GetStopFrame(client);
+    if (stopFrame > 0 && !IsFakeClient(client))
+    {
+        if (curframe == stopFrame && bPlayingToRecord)
+        {
+            // 播放转录制
+            normalproc = false;
+            HandleReplayRewind(client);
+            TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
+            DispatchKeyValueVector(client, "origin", pos);
+            
+            int endframe = Player_GetRewindFrame(client) + 1;
+            int framecount = Player_GetRecordedFramesCount(client) - 1;
+            if (endframe > framecount)
+            {
+                endframe = framecount;
+            }
+            
+            Player_ResizeRecordFrameList(client, endframe);
+            Player_SetIsRewinding(client, true);
+            Player_SetIsSegmenting(client, true);
+            Player_SetHasRun(client, false);
+            Player_SetPlayingReplay(client, false);
+            SetEntityMoveType(client, MOVETYPE_NONE);
+            Player_SetRewindFrame(client, endframe - 1);
+            
+            ResetButton(client);
+            ClientCommand(client, "slot1");
+            
+            STR_PrintMessageToAllClients("%N的Replay已经从%d帧继续.", client, endframe);
+            return Plugin_Changed;
+        }
+        else if (curframe == stopFrame)
+        {
+            // 播放到指定帧停止
+            Player_ResetAllReplayState(client);
+            ResetButton(client);
+            if (IsClientInGame(client) && GetClientTeam(client) != 1)
+            {
+                SetEntityMoveType(client, MOVETYPE_WALK);
+            }
+            STR_PrintMessageToAllClients("%N的Replay在%d帧停止.", client, curframe);
+            return Plugin_Continue;
+        }
+    }
+    
+    // =========================================================
+    // 暂停（倒带/快进）处理
+    // =========================================================
+    if (Player_GetIsRewinding(client))
+    {
+        normalproc = false;
+        HandleReplayRewind(client);
+        TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
+        DispatchKeyValueVector(client, "origin", pos);
+    }
+    
+    // =========================================================
+    // 武器切换
+    // =========================================================
+    if (frameinfo[FRAME_WEAPON] > 0 && frameinfo[FRAME_MOVETYPE] != MOVETYPE_LADDER)
+    {
+        FakeClientCommand(client, "use %s", g_Items[frameinfo[FRAME_WEAPON]]);
+    }
+    
+    // =========================================================
+    // 按键注入
+    // =========================================================
+    InjectPlaybackButtons(client, buttons, frameinfo, frameinfo_action, bOnlySetVel);
+    
+    // =========================================================
+    // 位置/角度/速度应用
+    // =========================================================
+    if (curframe == 0)
+    {
+        // 第一帧保存当前倍速快照，并强制设置位置/角度/速度
+        Player_SetPlaybackTimeScale(client, GetConVarFloat(FindConVar("host_timescale")));
+        TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
+        DispatchKeyValueVector(client, "origin", pos);
+    }
+    else
+    {
+        // 线性平滑处理
+        if (Player_GetIsLinearTransition(client))
+        {
+            if (HandleLinearSmoothTransition(client, velocity))
+            {
+                // 平滑已完成此帧处理
+            }
+            else
+            {
+                // 平滑结束，使用正常帧数据
+                TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
+                DispatchKeyValueVector(client, "origin", pos);
+            }
+        }
+        else
+        {
+            // 自由视角平滑过渡（仅对真人玩家）
+            if (!IsFakeClient(client))
+            {
+                int curButtons = GetClientButtons(client);
+                bool bOnlySetVelConVar = view_as<bool>(GetConVarBool(FindConVar("str_onlysetvel")));
+                
+                if (bOnlySetVelConVar)
+                {
+                    // 仅设置速度模式
+                    TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
+                    DispatchKeyValueVector(client, "origin", pos);
+                    Player_SetAngleSmooth(client, g_iAngleSmoothTickCount);
+                }
+                else if (!HandleAngleSmoothTransition(client, curButtons, pos, velocity, Player_GetPlaybackTimeScale(client)))
+                {
+                    // 正常播放路径
+                    ApplyPlaybackPosition(client, frameinfo, viewangles, velocity, pos, buttons, wishvel);
+                }
+            }
+            else
+            {
+                if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
+                {
+                    TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
+                }
+                else
+                {
+                    // 非爬梯帧恢复 MOVETYPE_WALK，防止爬梯状态残留
+                    SetEntityMoveType(client, MOVETYPE_WALK);
+                    TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
+                }
+                DispatchKeyValueVector(client, "origin", pos);
+                buttons = frameinfo[FRAME_Buttons];
+            }
+        }
+    }
+    
+    // =========================================================
+    // 帧推进 & 结束检测
+    // =========================================================
+    if (normalproc)
+    {
+        Player_IncrementRewindFrame(client);
+        curframe = Player_GetRewindFrame(client);
+        int length = Player_GetRecordedFramesCount(client);
+        
+        // 触发 OnPlayTick 转发
+        if (hOnPlayTick != INVALID_HANDLE)
+        {
+            Call_StartForward(hOnPlayTick);
+            Call_PushCell(client);
+            Call_PushCell(curframe);
+            Call_Finish();
+        }
+        
+        char sKeyValue[128];
+        Format(sKeyValue, sizeof(sKeyValue), "if (\"OnPlayTick\" in getroottable()) OnPlayTick(self, %d)", curframe);
+        SetVariantString(sKeyValue);
+        AcceptEntityInput(client, "RunScriptCode");
+        
+        // 显示帧信息（正常播放时受 sm_showframe 控制）
+        if (GetConVarBool(FindConVar("sm_showframe")))
+        {
+            float tickinterval = GetTickInterval();
+            char curtimebuf[64];
+            FormatTimeSpan(curtimebuf, sizeof(curtimebuf), curframe * tickinterval);
+            PrintCenterText(client, "%d / %d\nTime: %s", curframe, length - 1, curtimebuf);
+        }
+        
+        // 播放结束检测
+        if (curframe >= length - 2)
+        {
+            Player_SetRewindFrame(client, length - 1);
+            Player_SetIsRewinding(client, false);
 
-			// 在所有状态变量之前释放按键，防止最后一帧注入的
-			// +attack/+attack2 等卡死（尤其 +attack 导致左键失效）
-			ResetButton(client);
-			Player_ResetAllReplayState(client);
-			if (IsClientInGame(client) && GetClientTeam(client) != 1)
-			{
-				SetEntityMoveType(client, MOVETYPE_WALK);
-			}
-		}
-	}
-	
-	return Plugin_Changed;
+            // 在所有状态变量之前释放按键，防止最后一帧注入的
+            // +attack/+attack2 等卡死（尤其 +attack 导致左键失效）
+            ResetButton(client);
+            Player_ResetAllReplayState(client);
+            if (IsClientInGame(client) && GetClientTeam(client) != 1)
+            {
+                SetEntityMoveType(client, MOVETYPE_WALK);
+            }
+        }
+    }
+    
+    return Plugin_Changed;
 }
 
 /**
@@ -603,20 +603,20 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
  * @param wishvel     期望速度向量（可修改，用于爬梯）。
  */
 static void ApplyPlaybackPosition(int client, any frameinfo[FRAME_Length],
-	float viewangles[3], float velocity[3], float pos[3],
-	int& buttons, float wishvel[3])
+    float viewangles[3], float velocity[3], float pos[3],
+    int& buttons, float wishvel[3])
 {
-	if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
-	{
-		// 爬梯帧：不设置 MOVETYPE/velocity/wishvel，让引擎从按键+角度自然处理爬梯物理
-		buttons = frameinfo[FRAME_Buttons];
-		TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
-	}
-	else
-	{
-		// 非爬梯帧恢复 MOVETYPE_WALK，防止爬梯状态残留
-		SetEntityMoveType(client, MOVETYPE_WALK);
-		TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
-	}
-	DispatchKeyValueVector(client, "origin", pos);
+    if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
+    {
+        // 爬梯帧：不设置 MOVETYPE/velocity/wishvel，让引擎从按键+角度自然处理爬梯物理
+        buttons = frameinfo[FRAME_Buttons];
+        TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
+    }
+    else
+    {
+        // 非爬梯帧恢复 MOVETYPE_WALK，防止爬梯状态残留
+        SetEntityMoveType(client, MOVETYPE_WALK);
+        TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
+    }
+    DispatchKeyValueVector(client, "origin", pos);
 }

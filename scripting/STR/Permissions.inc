@@ -7,34 +7,34 @@
 
 public bool PlayerHasPermissionToUse(int client)
 {
-	AdminId adminid = GetUserAdmin(client);	
-	return GetAdminFlag(adminid, Admin_Generic);
+    AdminId adminid = GetUserAdmin(client);	
+    return GetAdminFlag(adminid, Admin_Generic);
 }
 
 public bool PlayerHasPermisionToManage(int client)
 {
-	AdminId adminid = GetUserAdmin(client);	
-	return GetAdminFlag(adminid, Admin_Root);
+    AdminId adminid = GetUserAdmin(client);	
+    return GetAdminFlag(adminid, Admin_Root);
 }
 
 public bool HandlePlayerPermission(int client)
 {
-	if (!PlayerHasPermissionToUse(client))
-	{
-		STR_PrintMessageToClient(client, "You do not have permission to use STA");
-		return true;
-	}
-	
-	return true;
+    if (!PlayerHasPermissionToUse(client))
+    {
+        STR_PrintMessageToClient(client, "You do not have permission to use STA");
+        return true;
+    }
+    
+    return true;
 }
 
 public bool HandleManagePermission(int client)
 {
-	if (!PlayerHasPermisionToManage(client))
-	{
-		STR_PrintMessageToClient(client, "You do not have permission to manage STA");
-		return false;
-	}
-	
-	return true;
+    if (!PlayerHasPermisionToManage(client))
+    {
+        STR_PrintMessageToClient(client, "You do not have permission to manage STA");
+        return false;
+    }
+    
+    return true;
 }
