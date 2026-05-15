@@ -265,14 +265,15 @@ public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_
     int ibuttons = frameinfo[FRAME_Buttons];
     int ibuttonsEx = frameinfo_action[FRAME_Buttons];
     
-    if (!IsFakeClient(client) || (GetClientTeam(client) == 3))
+    if (!IsFakeClient(client) || frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER || (GetClientTeam(client) == 3))
     {
+
         if (ibuttons & IN_JUMP) buttons |= IN_JUMP;
         else buttons &= ~IN_JUMP;
         
         if (ibuttons & IN_DUCK) ClientCommand(client, "+duck");
         else ClientCommand(client, "-duck");
-        
+
         // 爬梯时 FL_ONGROUND 为 false，移除该限制使 +forward 能正常发送
         if (ibuttons & IN_FORWARD && !bOnlySetVel)
             ClientCommand(client, "+forward");
@@ -524,6 +525,15 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
             {
                 if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
                 {
+                    // 设置 wishvel 帮助引擎识别爬梯方向（模拟 MR 的做法）
+                    int ibuttons_frame = frameinfo[FRAME_Buttons];
+                    wishvel[0] = 0.0;
+                    wishvel[1] = 0.0;
+                    if (ibuttons_frame & IN_FORWARD) wishvel[0] += 450.0;
+                    if (ibuttons_frame & IN_BACK) wishvel[0] -= 450.0;
+                    if (ibuttons_frame & IN_MOVERIGHT) wishvel[1] += 450.0;
+                    if (ibuttons_frame & IN_MOVELEFT) wishvel[1] -= 450.0;
+
                     TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
                 }
                 else
