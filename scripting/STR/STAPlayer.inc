@@ -287,6 +287,8 @@ public void Player_GetFrame(int client, int index, any[] frameinfo)
 
 public int Player_GetRecordedFramesCount(int client)
 {
+    if (RecordFramesList[client] == INVALID_HANDLE)
+        return 0;
     return GetArraySize(RecordFramesList[client]);
 }
 
@@ -1109,6 +1111,20 @@ public void Player_SetReplaySyncArmed(int client, bool value)
 {
     g_bReplaySyncArmed[client] = value;
 }
+
+//=============================================================================
+
+/**
+ * @brief 玩家是否启用 Debug 显示。
+ * 由 Debug 子菜单控制开关。
+ */
+bool g_bDebugEnabled[MAXPLAYERS + 1];
+
+/**
+ * @brief 玩家 Debug 显示的目标掩码（位标志）。
+ * 第 i 位 = 1 表示显示玩家 i 的调试信息。
+ */
+int g_iDebugTargetMask[MAXPLAYERS + 1];
 
 //=============================================================================
 

@@ -70,8 +70,17 @@ enum
     JumpToEnd_All,
     RewindSpeed_All,
     MOV_Replay2Record,
-    
+
     Menu_All,
+
+    /*
+        Debug 子菜单
+    */
+    Menu_Debug,
+    DEBUG_ToggleSelf,
+    DEBUG_ToggleBot_Start,
+    DEBUG_ToggleBot_End,
+    DEBUG_Close,
 };
 
 /*

@@ -73,6 +73,15 @@ Handle g_ConVar_PosMap_y;
 Handle g_ConVar_PosMap_z;
 Handle b_OnlySetVel;
 
+// VScript 触发用 ConVar（自动归零，类似 MR 的 st_mr_play/st_mr_record）
+Handle g_ConVar_STR_TriggerPlay;
+Handle g_ConVar_STR_TriggerRecord;
+Handle g_ConVar_STR_TriggerReset;
+Handle g_ConVar_STR_TriggerSave;
+Handle g_ConVar_STR_TriggerLoad;
+Handle g_ConVar_STR_TriggerPause;
+Handle g_ConVar_STR_TriggerUnPause;
+
 // SDKCall 句柄
 Handle g_hTakeOverBot;
 Handle g_hGoAwayFromKeyboard;
@@ -157,7 +166,31 @@ public void OnPluginStart()
     g_ConVar_PosMap_y    = CreateConVar("str_posmap_y", "0.0", "坐标映射y分量.", FCVAR_NOTIFY);
     g_ConVar_PosMap_z    = CreateConVar("str_posmap_z", "0.0", "坐标映射z分量.", FCVAR_NOTIFY);
     b_OnlySetVel         = CreateConVar("str_onlysetvel", "0", "仅设置速度,不设置坐标和视角.", FCVAR_NOTIFY);
-    
+
+    // VScript 触发用 ConVar（自动归零）
+    g_ConVar_STR_TriggerPlay   = CreateConVar("str_trigger_play", "0",
+        "VScript trigger: start playback for client. Auto-resets to 0.");
+    g_ConVar_STR_TriggerRecord = CreateConVar("str_trigger_record", "0",
+        "VScript trigger: start recording for client. Auto-resets to 0.");
+    g_ConVar_STR_TriggerReset  = CreateConVar("str_trigger_reset", "0",
+        "VScript trigger: reset/stop replay for client. Auto-resets to 0.");
+    g_ConVar_STR_TriggerSave   = CreateConVar("str_trigger_save", "0",
+        "VScript trigger: save replay for client. Auto-resets to 0.");
+    g_ConVar_STR_TriggerLoad   = CreateConVar("str_trigger_load", "0",
+        "VScript trigger: load replay file. Format 'client;filename'. Auto-resets to 0.");
+    g_ConVar_STR_TriggerPause  = CreateConVar("str_trigger_pause", "0",
+        "VScript trigger: pause replay for client. Auto-resets to 0.");
+    g_ConVar_STR_TriggerUnPause = CreateConVar("str_trigger_unpause", "0",
+        "VScript trigger: unpause replay for client. Auto-resets to 0.");
+
+    HookConVarChange(g_ConVar_STR_TriggerPlay,   ConVarChanged_STR_Trigger);
+    HookConVarChange(g_ConVar_STR_TriggerRecord, ConVarChanged_STR_Trigger);
+    HookConVarChange(g_ConVar_STR_TriggerReset,  ConVarChanged_STR_Trigger);
+    HookConVarChange(g_ConVar_STR_TriggerSave,   ConVarChanged_STR_Trigger);
+    HookConVarChange(g_ConVar_STR_TriggerLoad,   ConVarChanged_STR_Trigger);
+    HookConVarChange(g_ConVar_STR_TriggerPause,  ConVarChanged_STR_Trigger);
+    HookConVarChange(g_ConVar_STR_TriggerUnPause,ConVarChanged_STR_Trigger);
+
     // 全局 Forward
     g_hOnPlayTick   = CreateGlobalForward("OnPlayTick", ET_Ignore, Param_Cell, Param_Cell);
     g_hOnRecordTick = CreateGlobalForward("OnRecordTick", ET_Ignore, Param_Cell, Param_Cell);
@@ -194,6 +227,122 @@ public void OnPluginStart()
 }
 
 //=============================================================================
+// VScript 触发 ConVar 统一处理（自动归零）
+// VScript 调用 Convars.SetValue 会同步触发本函数（当前帧执行）。
+//=============================================================================
+
+public void ConVarChanged_STR_Trigger(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+    if (convar == g_ConVar_STR_TriggerLoad)
+    {
+        // 格式: "client;filename"
+        char sParts[2][PLATFORM_MAX_PATH];
+        if (ExplodeString(newValue, ";", sParts, 2, PLATFORM_MAX_PATH) == 2)
+        {
+            int client = StringToInt(sParts[0]);
+            if (client > 0 && client <= MAXCLIENTS && IsClientInGame(client))
+            {
+                char mapbuf[64];
+                GetCurrentMap(mapbuf, sizeof(mapbuf));
+                char filepath[PLATFORM_MAX_PATH];
+                BuildReplayFilePath(mapbuf, sParts[1], filepath, sizeof(filepath));
+                if (LoadReplayFromFile(client, filepath))
+                {
+                    Player_SetHasRun(client, true);
+                    STR_PrintMessageToAllClients("%N 已加载Replay(Trigger).", client);
+                }
+            }
+        }
+        SetConVarString(convar, "0");
+        return;
+    }
+
+    int client = StringToInt(newValue);
+    if (client < 1 || client > MAXCLIENTS || !IsClientInGame(client))
+    {
+        SetConVarString(convar, "0");
+        return;
+    }
+
+    if (convar == g_ConVar_STR_TriggerRecord)
+    {
+        Player_SetIsSegmenting(client, true);
+        Player_SetIsRewinding(client, false);
+        Player_SetHasRun(client, false);
+        Player_SetPlayingReplay(client, false);
+        Player_CreateFrameArray(client);
+        Player_SetRewindFrame(client, 0);
+        STR_PrintMessageToAllClients("开始记录%N的Replay(Trigger)...", client);
+    }
+    else if (convar == g_ConVar_STR_TriggerPlay)
+    {
+        if (Player_GetIsFileLoaded(client))
+        {
+            Player_SetHasRun(client, true);
+            Player_SetPlayingReplay(client, true);
+            Player_SetRewindFrame(client, Player_GetStartFrame(client));
+            Player_SetIsRewinding(client, true);
+
+            int lineSmooth = Player_GetEndFrame(client) - Player_GetStartFrame(client);
+            if (lineSmooth < 1) lineSmooth = 1;
+            Player_SetSmoothLineDecrement(client, lineSmooth);
+            g_bReplaySyncArmed[client] = true;
+            if (g_iReplaySyncStartTick == -1)
+                g_iReplaySyncStartTick = GetGameTickCount() + 3;
+
+            STR_PrintMessageToAllClients("%N 开始播放Replay(Trigger).", client);
+        }
+    }
+    else if (convar == g_ConVar_STR_TriggerReset)
+    {
+        ResetPlayerReplaySegment(client);
+        STR_PrintMessageToAllClients("%N 的Replay已重置(Trigger).", client);
+    }
+    else if (convar == g_ConVar_STR_TriggerSave)
+    {
+        Player_SetIsRewinding(client, false);
+        if (Player_GetIsSegmenting(client) || GetClientTeam(client) == 3)
+        {
+            char mapbuf[64];
+            GetCurrentMap(mapbuf, sizeof(mapbuf));
+
+            char newdirbuf[PLATFORM_MAX_PATH];
+            BuildReplayDirPath(mapbuf, newdirbuf, sizeof(newdirbuf));
+            if (!DirExists(newdirbuf)) CreateDirectory(newdirbuf, 511);
+
+            char timebuf[128];
+            FormatTime(timebuf, sizeof(timebuf), "%Y %m %d, %H %M %S");
+
+            char namebuf[256];
+            FormatEx(namebuf, sizeof(namebuf), "%s (%s)", mapbuf, timebuf);
+
+            char filename[PLATFORM_MAX_PATH];
+            FormatEx(filename, sizeof(filename), "%s/%s.STR", newdirbuf, namebuf);
+
+            if (SaveReplayToFile(client, filename))
+            {
+                STR_PrintMessageToAllClients("已保存%N的Replay(Trigger).", client);
+            }
+        }
+    }
+    else if (convar == g_ConVar_STR_TriggerPause)
+    {
+        Player_SetIsPauseWhilePlaying(client, true);
+        Player_SetIsRewinding(client, true);
+        RequestFrame(SetPlayerMoveTypeNone, client);
+        STR_PrintMessageToAllClients("%N 的Replay已暂停(Trigger).", client);
+    }
+    else if (convar == g_ConVar_STR_TriggerUnPause)
+    {
+        Player_SetIsPauseWhilePlaying(client, false);
+        Player_SetIsRewinding(client, false);
+        STR_PrintMessageToAllClients("%N 的Replay已取消暂停(Trigger).", client);
+    }
+
+    SetConVarString(convar, "0");
+}
+
+//=============================================================================
 // 地图开始
 //=============================================================================
 
@@ -227,34 +376,38 @@ public void OnMapStart()
  */
 public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float wishvel[3], float wishangles[3], int& weapon)
 {
+    Action result = Plugin_Continue;
+
     // 1) 录制状态
     if (Player_GetIsSegmenting(client))
     {
         if (Player_GetIsRewinding(client))
         {
             // 录制中倒带
-            return HandleReplayRecordingRewind(client, buttons, wishvel, wishangles, weapon);
+            result = HandleReplayRecordingRewind(client, buttons, wishvel, wishangles, weapon);
         }
         else
         {
             // 正常录制
-            return HandleReplayRecording(client, buttons, impulse, wishvel, wishangles, weapon, g_hOnRecordTick);
+            result = HandleReplayRecording(client, buttons, impulse, wishvel, wishangles, weapon, g_hOnRecordTick);
         }
     }
-    
     // 2) 播放状态
-    if (Player_GetIsPlayingReplay(client))
+    else if (Player_GetIsPlayingReplay(client))
     {
         bool bPlayWhenInc = GetConVarBool(b_PlayWhenIncapacitated);
         bool bPlayToRec   = GetConVarBool(b_PlayingToRecord);
         bool bOnlySetVel  = GetConVarBool(b_OnlySetVel);
         float fTimeScale  = GetConVarFloat(FindConVar("host_timescale"));
-        
-        return HandleReplayPlayback(client, buttons, wishvel, wishangles, weapon,
+
+        result = HandleReplayPlayback(client, buttons, wishvel, wishangles, weapon,
             g_hOnPlayTick, bPlayWhenInc, bPlayToRec, bOnlySetVel, fTimeScale);
     }
-    
-    return Plugin_Continue;
+
+    // 3) Debug 显示（所有客户端）
+    STR_UpdateDebugDisplay(client);
+
+    return result;
 }
 
 //=============================================================================

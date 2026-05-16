@@ -518,7 +518,7 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
                 else if (!HandleAngleSmoothTransition(client, curButtons, pos, velocity, Player_GetPlaybackTimeScale(client)))
                 {
                     // 正常播放路径
-                    ApplyPlaybackPosition(client, frameinfo, viewangles, velocity, pos, buttons, wishvel);
+                    ApplyPlaybackPosition(client, frameinfo, viewangles, velocity, pos, buttons);
                 }
             }
             else
@@ -614,7 +614,7 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
  */
 static void ApplyPlaybackPosition(int client, any frameinfo[FRAME_Length],
     float viewangles[3], float velocity[3], float pos[3],
-    int& buttons, float wishvel[3])
+    int& buttons)
 {
     if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
     {
@@ -630,3 +630,139 @@ static void ApplyPlaybackPosition(int client, any frameinfo[FRAME_Length],
     }
     DispatchKeyValueVector(client, "origin", pos);
 }
+
+//=============================================================================
+// Debug 显示 — VScript HUD 方式
+//=============================================================================
+
+/**
+ * @brief 将按键掩码转换为可读的短名称字符串。
+ */
+static void Debug_ButtonsToString(int mask, char[] buffer, int maxlen)
+{
+    buffer[0] = '\0';
+
+    if (mask & IN_ATTACK)   StrCat(buffer, maxlen, " +att");
+    if (mask & IN_JUMP)     StrCat(buffer, maxlen, " +jmp");
+    if (mask & IN_DUCK)     StrCat(buffer, maxlen, " +duck");
+    if (mask & IN_FORWARD)  StrCat(buffer, maxlen, " +fwd");
+    if (mask & IN_BACK)     StrCat(buffer, maxlen, " +back");
+    if (mask & IN_USE)      StrCat(buffer, maxlen, " +use");
+    if (mask & IN_LEFT)     StrCat(buffer, maxlen, " +left");
+    if (mask & IN_RIGHT)    StrCat(buffer, maxlen, " +right");
+    if (mask & IN_MOVELEFT) StrCat(buffer, maxlen, " +mleft");
+    if (mask & IN_MOVERIGHT)StrCat(buffer, maxlen, " +mright");
+    if (mask & IN_ATTACK2)  StrCat(buffer, maxlen, " +att2");
+    if (mask & IN_RELOAD)   StrCat(buffer, maxlen, " +rel");
+    if (mask & IN_ZOOM)     StrCat(buffer, maxlen, " +zoom");
+    if (mask & IN_SPEED)    StrCat(buffer, maxlen, " +spd");
+    if (mask & IN_WALK)     StrCat(buffer, maxlen, " +walk");
+}
+
+/**
+ * @brief 更新 Debug HUD 显示。
+ * 使用 VScript HUD 系统（同 stmr2）在屏幕上持久显示调试信息。
+ * 每 tick 调用，VScript 字段会自动保持显示。
+ *
+ * @param client  要为其更新 HUD 的客户端索引。
+ */
+public void STR_UpdateDebugDisplay(int client)
+{
+    if (!g_bDebugEnabled[client] || g_iDebugTargetMask[client] == 0)
+    {
+        // 清除 HUD（安全清除，避免 VScript 报错）
+        SetVariantString("if (\"g_STR_Dbg\" in getroottable() && \"main\" in g_STR_Dbg.Fields) { g_STR_Dbg.Fields.main.dataval = \"\"; HUDSetLayout(g_STR_Dbg); }");
+        AcceptEntityInput(client, "RunScriptCode");
+        return;
+    }
+
+    // 初始化 VScript HUD 字段（每 tick 安全创建，实际仅首次生效）
+    SetVariantString("if (!(\"g_STR_Dbg\" in getroottable())) ::g_STR_Dbg <- {Fields = {}}");
+    AcceptEntityInput(client, "RunScriptCode");
+    SetVariantString("if (!(\"main\" in g_STR_Dbg.Fields)) { ::g_STR_Dbg.Fields.main <- {slot = g_MapScript.HUD_MID_BOX, dataval = \"\", flags = g_MapScript.HUD_FLAG_NOBG | g_MapScript.HUD_FLAG_ALIGN_LEFT}; HUDPlace(g_MapScript.HUD_MID_BOX, 0.43, 0.42, 0.5, 0.3); }");
+    AcceptEntityInput(client, "RunScriptCode");
+
+    // 构建调试文本
+    char debugBuf[1024];
+    debugBuf[0] = '\0';
+
+    for (int i = 1, printCounter = 1; i <= MaxClients && printCounter < 3; i++)
+    {
+        if (!(g_iDebugTargetMask[client] & (1 << i)))
+            continue;
+        if (!IsClientInGame(i))
+            continue;
+
+        printCounter++;
+
+        float vel[3];
+        GetEntPropVector(i, Prop_Data, "m_vecVelocity", vel);
+        float velMag = GetVectorLength(vel);
+
+        int flags = GetEntProp(i, Prop_Send, "m_fFlags");
+        int buttons = GetClientButtons(i);
+
+        char btnStr[128];
+        Debug_ButtonsToString(buttons, btnStr, sizeof(btnStr));
+
+        if (btnStr[0] != '\0')
+        {
+            // 去掉开头的空格
+            int start = 0;
+            while (btnStr[start] == ' ') start++;
+            if (start > 0)
+                strcopy(btnStr, sizeof(btnStr), btnStr[start]);
+        }
+        else
+        {
+            btnStr = "-";
+        }
+
+        // 在按键名前加上位码
+        char btnWithCode[128];
+        FormatEx(btnWithCode, sizeof(btnWithCode), "[%d] %s", buttons, btnStr);
+
+        char frameInfo[32];
+        if (Player_GetIsPlayingReplay(i))
+        {
+            int curFrame = Player_GetRewindFrame(i);
+            int totalFrames = Player_GetRecordedFramesCount(i);
+            FormatEx(frameInfo, sizeof(frameInfo), "%d/%d", curFrame, totalFrames);
+        }
+        else
+        {
+            FormatEx(frameInfo, sizeof(frameInfo), "-");
+        }
+
+        char title[64];
+        FormatEx(title, sizeof(title), "[%N]", i);
+
+        // 格式：每目标 1 行，固定宽度右对齐数值实现竖直对齐
+        char titleBuf[24], frameBuf[12], flagsBuf[6], velBuf[8];
+        FormatEx(titleBuf, sizeof(titleBuf), "%-10s", title);
+        FormatEx(frameBuf, sizeof(frameBuf), "%5s", frameInfo);
+        FormatEx(flagsBuf, sizeof(flagsBuf), "%4d", flags);
+        FormatEx(velBuf, sizeof(velBuf), "%6.0f", velMag);
+
+        char line[512];
+        FormatEx(line, sizeof(line), "%s  帧:%s  F:%s  VEL:%s  %s\n",
+            titleBuf, frameBuf, flagsBuf, velBuf, btnWithCode);
+
+        StrCat(debugBuf, sizeof(debugBuf), line);
+    }
+
+    if (debugBuf[0] == '\0')
+        return;
+
+    // 转义特殊字符：双引号 → 单引号，换行 → \n 转义序列
+    ReplaceString(debugBuf, sizeof(debugBuf), "\"", "'");
+    ReplaceString(debugBuf, sizeof(debugBuf), "\n", "\\n");
+
+    char sScript[1024];
+    Format(sScript, sizeof(sScript), "g_STR_Dbg.Fields.main.dataval = \"%s\"", debugBuf);
+    SetVariantString(sScript);
+    AcceptEntityInput(client, "RunScriptCode");
+    SetVariantString("HUDSetLayout(g_STR_Dbg)");
+    AcceptEntityInput(client, "RunScriptCode");
+}
+

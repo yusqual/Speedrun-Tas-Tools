@@ -135,6 +135,7 @@ public void STR_OpenSegmentReplayMenu(int client)
                 STR_PrintMessageToClient(client, "闲置期间无法录制Replay");
             }
             Menu_AddEnumEntry(menu, SEG_LoadFromFile, "加载Replay");
+            Menu_AddEnumEntry(menu, Menu_Debug, "调试(Debug)");
         }
         else
         {
@@ -161,6 +162,7 @@ public void STR_OpenSegmentReplayMenu(int client)
                 Menu_AddEnumEntry(menu, SEG_Play_Trace, "绘制Replay轨迹");
                 Menu_AddEnumEntry(menu, SEG_Play_Trace_PosMap, "绘制坐标映射轨迹(Def Trick.)");
                 Menu_AddEnumEntry(menu, SEG_Play_Trace_Close, "关闭绘制轨迹");
+                Menu_AddEnumEntry(menu, Menu_Debug, "调试(Debug)");
             }
         }
     }
@@ -182,7 +184,7 @@ public void STR_OpenSegmentReplayMenu(int client)
             Menu_AddEnumEntry(menu, SEG_Pause, "暂停");
         }
     }
-    
+
     Menu_AddEnumEntry(menu, SEG_EXIT, "退出菜单");
     DisplayMenu(menu, client, MENU_TIME_FOREVER);
 }
@@ -571,6 +573,11 @@ public int MenuHandler_SegmentReplay(Menu menu, MenuAction action, int param1, i
                 SetPlayerReplayFrame(client, client, endFrame);
                 STR_OpenSegmentReplayMenu(client);
             }
+
+            case Menu_Debug:
+            {
+                STR_OpenDebugMenu(client);
+            }
         }
     }
     else if (action == MenuAction_Cancel)
@@ -587,6 +594,104 @@ public int MenuHandler_SegmentReplay(Menu menu, MenuAction action, int param1, i
         delete menu;
     }
     
+    return 0;
+}
+
+//=============================================================================
+// Debug 菜单
+//=============================================================================
+
+/**
+ * @brief 打开 Debug 子菜单。
+ * 显示自身和所有 Bot 的开关状态。
+ */
+public void STR_OpenDebugMenu(int client)
+{
+    Menu menu = CreateMenu(MenuHandler_Debug);
+    SetMenuTitle(menu, "STR Debug");
+
+    // 自身开关
+    char display[64];
+    FormatEx(display, sizeof(display), "%s 自身信息",
+        g_bDebugEnabled[client] && (g_iDebugTargetMask[client] & (1 << client)) ? "[★]" : "[ ]");
+    AddMenuItem(menu, "self", display);
+
+    // 枚举所有在游戏中的 fake client
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i) && IsFakeClient(i) && IsPlayerAlive(i))
+        {
+            char info[8];
+            IntToString(i, info, sizeof(info));
+            FormatEx(display, sizeof(display), "%s Bot: %N",
+                g_bDebugEnabled[client] && (g_iDebugTargetMask[client] & (1 << i)) ? "[★]" : "[ ]", i);
+            AddMenuItem(menu, info, display);
+        }
+    }
+
+    AddMenuItem(menu, "close", "< 返回");
+    DisplayMenu(menu, client, MENU_TIME_FOREVER);
+}
+
+/**
+ * @brief Debug 菜单处理器。
+ * 切换目标显示状态，或在"返回"时重新打开上级菜单。
+ */
+public int MenuHandler_Debug(Menu menu, MenuAction action, int param1, int param2)
+{
+    int client = param1;
+
+    if (action == MenuAction_Select)
+    {
+        char info[16];
+        bool found = GetMenuItem(menu, param2, info, sizeof(info));
+        if (!found) return 0;
+
+        if (StrEqual(info, "close"))
+        {
+            // 返回上级菜单
+            STR_OpenSegmentReplayMenu(client);
+        }
+        else
+        {
+            int target = StringToInt(info);
+            if (target == 0)
+            {
+                // self 切换
+                g_iDebugTargetMask[client] ^= (1 << client);
+                if (g_iDebugTargetMask[client] & (1 << client))
+                    g_bDebugEnabled[client] = true;
+                else
+                {
+                    // 检查是否还有其他目标
+                    if (g_iDebugTargetMask[client] == 0)
+                        g_bDebugEnabled[client] = false;
+                }
+            }
+            else
+            {
+                // bot 切换
+                g_iDebugTargetMask[client] ^= (1 << target);
+                if (g_iDebugTargetMask[client] & (1 << target))
+                    g_bDebugEnabled[client] = true;
+                else
+                {
+                    if (g_iDebugTargetMask[client] == 0)
+                        g_bDebugEnabled[client] = false;
+                }
+            }
+            STR_OpenDebugMenu(client);
+        }
+    }
+    else if (action == MenuAction_Cancel)
+    {
+        // do nothing
+    }
+    else if (action == MenuAction_End)
+    {
+        delete menu;
+    }
+
     return 0;
 }
 
@@ -662,7 +767,7 @@ public Action Cmd_ReplayContinue(int client, int args)
             Player_SetHasRun(client, true);
             Player_SetPlayingReplay(client, true);
             Player_SetRewindFrame(client, Player_GetStartFrame(client));
-            Player_SetIsRewinding(client, true);
+            Player_SetIsRewinding(client, false);
             
             int lineSmooth = Player_GetEndFrame(client) - Player_GetStartFrame(client);
             if (lineSmooth < 1)
