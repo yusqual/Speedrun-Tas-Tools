@@ -660,6 +660,21 @@ static void Debug_ButtonsToString(int mask, char[] buffer, int maxlen)
 }
 
 /**
+ * @brief 初始化 Debug HUD 的 VScript 表（同 stmr2 逻辑）。
+ * 无条件重建，确保 !restart 后 HUD 位置和 m_bChallengeModeActive 正确。
+ * 发送到 entity 0 —— g_MapScript 仅在该作用域可用。
+ */
+public void STR_InitDebugHUD()
+{
+    SetVariantString("::g_STR_Dbg <- {Fields = {}}");
+    AcceptEntityInput(0, "RunScriptCode");
+    SetVariantString("::g_STR_Dbg.Fields.main <- {slot = g_MapScript.HUD_MID_BOX, dataval = \"\", flags = g_MapScript.HUD_FLAG_NOBG | g_MapScript.HUD_FLAG_ALIGN_LEFT}; HUDPlace(g_MapScript.HUD_MID_BOX, 0.43, 0.42, 0.5, 0.3);");
+    AcceptEntityInput(0, "RunScriptCode");
+    SetVariantString("NetProps.SetPropInt(self, \"m_bChallengeModeActive\", 1)");
+    AcceptEntityInput(FindEntityByClassname(-1, "terror_gamerules"), "RunScriptCode");
+}
+
+/**
  * @brief 更新 Debug HUD 显示。
  * 使用 VScript HUD 系统（同 stmr2）在屏幕上持久显示调试信息。
  * 每 tick 调用，VScript 字段会自动保持显示。
@@ -670,17 +685,13 @@ public void STR_UpdateDebugDisplay(int client)
 {
     if (!g_bDebugEnabled[client] || g_iDebugTargetMask[client] == 0)
     {
-        // 清除 HUD（安全清除，避免 VScript 报错）
+        // 清除 HUD（发送到 client，每玩家独立渲染）
         SetVariantString("if (\"g_STR_Dbg\" in getroottable() && \"main\" in g_STR_Dbg.Fields) { g_STR_Dbg.Fields.main.dataval = \"\"; HUDSetLayout(g_STR_Dbg); }");
         AcceptEntityInput(client, "RunScriptCode");
         return;
     }
 
-    // 初始化 VScript HUD 字段（每 tick 安全创建，实际仅首次生效）
-    SetVariantString("if (!(\"g_STR_Dbg\" in getroottable())) ::g_STR_Dbg <- {Fields = {}}");
-    AcceptEntityInput(client, "RunScriptCode");
-    SetVariantString("if (!(\"main\" in g_STR_Dbg.Fields)) { ::g_STR_Dbg.Fields.main <- {slot = g_MapScript.HUD_MID_BOX, dataval = \"\", flags = g_MapScript.HUD_FLAG_NOBG | g_MapScript.HUD_FLAG_ALIGN_LEFT}; HUDPlace(g_MapScript.HUD_MID_BOX, 0.43, 0.42, 0.5, 0.3); }");
-    AcceptEntityInput(client, "RunScriptCode");
+    STR_InitDebugHUD();
 
     // 构建调试文本
     char debugBuf[1024];

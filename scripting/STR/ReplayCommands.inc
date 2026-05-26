@@ -660,7 +660,10 @@ public int MenuHandler_Debug(Menu menu, MenuAction action, int param1, int param
                 // self 切换
                 g_iDebugTargetMask[client] ^= (1 << client);
                 if (g_iDebugTargetMask[client] & (1 << client))
+                {
                     g_bDebugEnabled[client] = true;
+                    if (IsClientInGame(client)) STR_InitDebugHUD();
+                }
                 else
                 {
                     // 检查是否还有其他目标
@@ -673,7 +676,10 @@ public int MenuHandler_Debug(Menu menu, MenuAction action, int param1, int param
                 // bot 切换
                 g_iDebugTargetMask[client] ^= (1 << target);
                 if (g_iDebugTargetMask[client] & (1 << target))
+                {
                     g_bDebugEnabled[client] = true;
+                    if (IsClientInGame(client)) STR_InitDebugHUD();
+                }
                 else
                 {
                     if (g_iDebugTargetMask[client] == 0)

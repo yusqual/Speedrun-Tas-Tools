@@ -1,0 +1,20 @@
+{
+  "servers": {
+    "drawio": {
+      "command": "npx",
+      "args": [
+        "@next-ai-drawio/mcp-server@latest"
+      ]
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ]
+    },
+    "tavily": {
+      "type": "http",
+      "url": "https://mcp.tavily.com/mcp/?tavilyApiKey=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"
+    }
+  }
+}

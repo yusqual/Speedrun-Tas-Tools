@@ -201,7 +201,8 @@ public void OnPluginStart()
     HookEvent("player_bot_replace", Event_PlayerBotReplace);
     HookEvent("bot_player_replace", Event_PlayerBotReplace);
     HookEvent("player_use", Event_PlayerUse);
-    
+    HookEvent("round_start", Event_RoundStart);
+
     // SDKCall 初始化：TakeOverBot / GoAwayFromKeyboard
     char sFilePath[64];
     BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "gamedata/st_signs.txt");
@@ -488,6 +489,23 @@ public void Event_PlayerUse(Event event, const char[] name, bool dontBroadcast)
                 AcceptEntityInput(entity, "PlayerOpen", client);
             else
                 AcceptEntityInput(entity, "PlayerClose", client);
+        }
+    }
+}
+
+/**
+ * @brief 回合开始事件：重新初始化 Debug HUD。
+ * !restart 后 VScript 重置、m_bChallengeModeActive 归零，
+ * 需要在此重建 HUD 表和启用 ScriptedMode 显示。
+ */
+public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
+{
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (g_bDebugEnabled[i])
+        {
+            STR_InitDebugHUD();
+            break;
         }
     }
 }
