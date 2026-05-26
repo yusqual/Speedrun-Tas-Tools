@@ -145,78 +145,112 @@ new bool:g_Menu_IsRew[MAXCLIENTS + 1];
 new g_Menu_iStmpClearTrack;
 new g_Menu_iStmpSwitchFile;
 
+bool g_Menu_bRecPaused[MAXCLIENTS + 1];
+int g_iRecRewindFrame[MAXCLIENTS + 1];
+int g_iRecRewindSpeed[MAXCLIENTS + 1];
+float g_fRecStartOrigin[MAXCLIENTS + 1][3];
+float g_fRecStartAngles[MAXCLIENTS + 1][3];
+float g_fRecStartVelocity[MAXCLIENTS + 1][3];
+
+enum MR3MenuItem
+{
+    MR3_Record,          // 开始录制
+    MR3_Play,            // 播放默认录像
+    MR3_LoadFile,        // 加载录像文件
+    MR3_Tracker,         // 轨迹绘制
+    MR3_ClearTracker,    // 清除轨迹
+    MR3_QuickSave,       // 快速保存
+    MR3_Legacy_On,       // Legacy模式: ON
+    MR3_Legacy_Off,      // Legacy模式: OFF
+    MR3_PauseRecord,     // 暂停录制
+    MR3_CancelDelay,     // 取消录制
+    MR3_Freeze,          // 暂停播放
+    MR3_Split,           // 分割录制
+    MR3_Stop,            // 停止
+    MR3_Resume,          // 继续播放
+    MR3_JumpStart,       // 跳转至开头
+    MR3_JumpEnd,         // 跳转至结尾
+    MR3_Exit,            // 退出菜单
+    MR3_ResumeRecord,    // 继续录制（从暂停）
+    MR3_StepForward,     // 前进N帧
+    MR3_StepBack,        // 后退N帧
+    MR3_RecRewindSpeed,  // 跳转帧数(N值): N
+    MR3_RecJumpStart,    // 跳转至开头（录制暂停）
+    MR3_RecJumpEnd       // 跳转至结尾（录制暂停）
+};
+
 new const String:g_Items[ITEMS_COUNT][] =
 {
-	"NULL",
-	"weapon_upgradepack_incendiary",
-	"weapon_upgradepack_explosive",
-	"weapon_pistol",
-	"weapon_pistol_magnum",
-	"weapon_adrenaline",
-	"weapon_pain_pills",
-	"weapon_vomitjar",
-	"weapon_pipe_bomb",
-	"weapon_molotov",
-	"weapon_defibrillator",
-	"weapon_first_aid_kit",
-	"weapon_shotgun_chrome",
-	"weapon_pumpshotgun",
-	"weapon_shotgun_spas",
-	"weapon_autoshotgun",
-	"weapon_smg",
-	"weapon_smg_silenced",
-	"weapon_rifle",
-	"weapon_rifle_ak47",
-	"weapon_rifle_desert",
-	"weapon_hunting_rifle",
-	"weapon_sniper_military",
-	"weapon_rifle_m60",
-	"weapon_grenade_launcher",
-	"weapon_chainsaw",
-	"weapon_melee"
+    "NULL",
+    "weapon_upgradepack_incendiary",
+    "weapon_upgradepack_explosive",
+    "weapon_pistol",
+    "weapon_pistol_magnum",
+    "weapon_adrenaline",
+    "weapon_pain_pills",
+    "weapon_vomitjar",
+    "weapon_pipe_bomb",
+    "weapon_molotov",
+    "weapon_defibrillator",
+    "weapon_first_aid_kit",
+    "weapon_shotgun_chrome",
+    "weapon_pumpshotgun",
+    "weapon_shotgun_spas",
+    "weapon_autoshotgun",
+    "weapon_smg",
+    "weapon_smg_silenced",
+    "weapon_rifle",
+    "weapon_rifle_ak47",
+    "weapon_rifle_desert",
+    "weapon_hunting_rifle",
+    "weapon_sniper_military",
+    "weapon_rifle_m60",
+    "weapon_grenade_launcher",
+    "weapon_chainsaw",
+    "weapon_melee"
 };
 
 new const String:g_Buttons[][] =
 {
-	"NULL",
-	"1: IN_ATTACK",
-	"2: IN_JUMP",
-	"4: IN_DUCK",
-	"8: IN_FORWARD",
-	"16: IN_BACK",
-	"32: IN_USE",
-	"64: IN_CANCEL",
-	"128: IN_LEFT",
-	"256: IN_RIGHT",
-	"512: IN_MOVELEFT",
-	"1024: IN_MOVERIGHT",
-	"2048: IN_ATTACK2",
-	"4096: IN_RUN",
-	"8192: IN_RELOAD",
-	"16384: IN_ALT1",
-	"32768: IN_ALT2",
-	"65536: IN_SCORE",
-	"131072: IN_SPEED",
-	"262144: IN_WALK",
-	"524288: IN_ZOOM",
-	"1048576: IN_WEAPON1",
-	"2097152: IN_WEAPON2",
-	"4194304: IN_BULLRUSH",
-	"8388608: IN_GRENADE1",
-	"16777216: IN_GRENADE2",
-	"33554432: IN_ATTACK3",
-	"67108864: IN_IDLE",
-	"134217728: IN_TAKEOVER",
-	"268435456: IN_FREE_ANGLE"
+    "NULL",
+    "1: IN_ATTACK",
+    "2: IN_JUMP",
+    "4: IN_DUCK",
+    "8: IN_FORWARD",
+    "16: IN_BACK",
+    "32: IN_USE",
+    "64: IN_CANCEL",
+    "128: IN_LEFT",
+    "256: IN_RIGHT",
+    "512: IN_MOVELEFT",
+    "1024: IN_MOVERIGHT",
+    "2048: IN_ATTACK2",
+    "4096: IN_RUN",
+    "8192: IN_RELOAD",
+    "16384: IN_ALT1",
+    "32768: IN_ALT2",
+    "65536: IN_SCORE",
+    "131072: IN_SPEED",
+    "262144: IN_WALK",
+    "524288: IN_ZOOM",
+    "1048576: IN_WEAPON1",
+    "2097152: IN_WEAPON2",
+    "4194304: IN_BULLRUSH",
+    "8388608: IN_GRENADE1",
+    "16777216: IN_GRENADE2",
+    "33554432: IN_ATTACK3",
+    "67108864: IN_IDLE",
+    "134217728: IN_TAKEOVER",
+    "268435456: IN_FREE_ANGLE"
 };
 
 public Plugin:myinfo =
 {
-	name = "Movement Reader",
-	author = "noa1mbot",
-	description = "Records and playbacks player's movement.",
-	version = PLUGIN_VER,
-	url = "http://steamcommunity.com/sharedfiles/filedetails/?id=510955402"
+    name = "Movement Reader",
+    author = "noa1mbot",
+    description = "Records and playbacks player's movement.",
+    version = PLUGIN_VER,
+    url = "http://steamcommunity.com/sharedfiles/filedetails/?id=510955402"
 }
 
 //========================================================================================================================
@@ -225,486 +259,545 @@ public Plugin:myinfo =
 
 public OnPluginStart()
 {
-	g_ConVar_ForceFile = CreateConVar("st_mr_force_file", "default", "Force custom file name to playback.");
-	g_ConVar_Record = CreateConVar("st_mr_record", "0", "Specify client index to record.");
-	g_ConVar_Play = CreateConVar("st_mr_play", "0", "Specify client index to playback.");
-	g_ConVar_Split = CreateConVar("st_mr_split", "0", "Specify client index to split his playback and record new one.");
-	g_ConVar_NoTeleport = CreateConVar("st_mr_no_teleport", "0", "Prohibit teleportation before playback.");
-	g_ConVar_Stop = CreateConVar("st_mr_stop_player", "0", "Stop any record/playback for a specific player.");
-	g_ConVar_ExRecord = CreateConVar("st_mr_exrec", "1", "Allow record position and velocity vectors.", FCVAR_NOTIFY);
-	g_ConVar_ExPlay = CreateConVar("st_mr_explay", "1", "Allow playback position and velocity vectors.", FCVAR_NOTIFY);
-	g_ConVar_Debug = CreateConVar("st_mr_debug", "0", "Montor in console movement lines by player index.", FCVAR_NOTIFY);
-	g_ConVar_FFA = CreateConVar("st_mr_ffa", "1", "Activate the free-for-all mode, which allows each player to playback their own default movement.", FCVAR_NOTIFY);
-	g_ConVar_AllowIDLE = CreateConVar("st_mr_allow_record_idle", "1", "Allow IDLE bits recording.", FCVAR_NOTIFY);
-	g_ConVar_AllowFreeAngle = CreateConVar("st_mr_allow_free_angle", "0", "Allow record and playback with free angle (for debugging only).", FCVAR_NOTIFY);
-	g_ConVar_AllowHostInputs = CreateConVar("st_mr_allow_host_inputs", "0", "Allow sending client inputs to the host console.", FCVAR_NOTIFY);
-	g_ConVar_AllowHelpers = CreateConVar("st_mr_allow_playback_special_helpers", "1", "Allow special helpers while using Play option. Such as: timer reset and removing all infected.", FCVAR_NOTIFY);
-	g_ConVar_TweakDelay = CreateConVar("st_mr_tweak_delay", "1.2", "Set the delay time before record/split.", FCVAR_NOTIFY);
-	g_ConVar_TweakTimeScale = CreateConVar("st_mr_tweak_timescale", "0.25", "Set the timescale value after record/split.", FCVAR_NOTIFY);
-	g_ConVar_TrackerText = CreateConVar("st_mr_tracker_text_level", "1", "Specify how should we display the text (0 - off; 1 - only text; 2 - text with time delimiters).", FCVAR_NOTIFY);
-	RegConsoleCmd("st_mr_stop", Cmd_Stop, "Stop any record/playback.");
-	RegConsoleCmd("st_mr_get_frame", Cmd_GetFrame, "Get current playback frame from the file for debugging.");
-	RegConsoleCmd("st_mr_goto", Cmd_Goto, "Move to specific line during playback (usage: st_mr_goto 150 \"filename\"). Specify only line to manage current playback.");
-	RegConsoleCmd("st_mr_tracker", Cmd_Tracker, "Draw the movement path with info to console.");
-	RegConsoleCmd("st_mr_tracker_clear", Cmd_Tracker, "Clear the movement path.");
-	RegConsoleCmd("st_mr_save", Cmd_Save, "Creates a copy of \"default.txt\" movement and overrides \"quicksave.txt\" with it. Hold SHIFT+R in menu to load the last save.");
-	RegConsoleCmd("stmr", Cmd_MR, "Show Movement Reader menu.");
-	RegConsoleCmd("stmr2", Cmd_MR2, "Show Movement Reader advanced menu.");
-	
-	HookConVarChange(g_ConVar_Record, ConVarChanged);
-	HookConVarChange(g_ConVar_Play, ConVarChanged);
-	HookConVarChange(g_ConVar_Split, ConVarChanged);
-	HookConVarChange(g_ConVar_Stop, ConVarChanged);
-	HookConVarChange(g_ConVar_AllowHostInputs, ConVarChanged_RevokeHostInputs);
-	HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
-	HookEvent("round_end", Event_RoundEnd, EventHookMode_PostNoCopy);
-	HookEvent("weapon_fire", Event_WeaponFire);
-	HookEvent("player_bot_replace", Event_PlayerBotReplace);
-	HookEvent("bot_player_replace", Event_PlayerBotReplace);
-	CreateTimer(3.0, TimerMenuUpdate, _, TIMER_REPEAT);
-	CreateTimer(0.3, TimerCheckPress, _, TIMER_REPEAT);
-	
-	decl String:sFilePath[64];
-	BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "gamedata/st_signs.txt");
-	if (FileExists(sFilePath))
-	{
-		new Handle:hConfig = LoadGameConfigFile("st_signs");
-		StartPrepSDKCall(SDKCall_Player);
-		PrepSDKCall_SetFromConf(hConfig, SDKConf_Signature, "TakeOverBot");
-		g_hTakeOverBot = EndPrepSDKCall();
-		StartPrepSDKCall(SDKCall_Player);
-		PrepSDKCall_SetFromConf(hConfig, SDKConf_Signature, "GoAwayFromKeyboard");
-		g_hGoAwayFromKeyboard = EndPrepSDKCall();
-		CloseHandle(hConfig);
-	}
-	
-	g_hOnPlayEnd = CreateGlobalForward("OnPlayEnd", ET_Ignore, Param_Cell, Param_String);
-	g_hOnPlayLine = CreateGlobalForward("OnPlayLine", ET_Ignore, Param_Cell, Param_String, Param_Cell, Param_Cell);
+    g_ConVar_ForceFile = CreateConVar("st_mr_force_file", "default", "Force custom file name to playback.");
+    g_ConVar_Record = CreateConVar("st_mr_record", "0", "Specify client index to record.");
+    g_ConVar_Play = CreateConVar("st_mr_play", "0", "Specify client index to playback.");
+    g_ConVar_Split = CreateConVar("st_mr_split", "0", "Specify client index to split his playback and record new one.");
+    g_ConVar_NoTeleport = CreateConVar("st_mr_no_teleport", "0", "Prohibit teleportation before playback.");
+    g_ConVar_Stop = CreateConVar("st_mr_stop_player", "0", "Stop any record/playback for a specific player.");
+    g_ConVar_ExRecord = CreateConVar("st_mr_exrec", "1", "Allow record position and velocity vectors.", FCVAR_NOTIFY);
+    g_ConVar_ExPlay = CreateConVar("st_mr_explay", "1", "Allow playback position and velocity vectors.", FCVAR_NOTIFY);
+    g_ConVar_Debug = CreateConVar("st_mr_debug", "0", "Montor in console movement lines by player index.", FCVAR_NOTIFY);
+    g_ConVar_FFA = CreateConVar("st_mr_ffa", "1", "Activate the free-for-all mode, which allows each player to playback their own default movement.", FCVAR_NOTIFY);
+    g_ConVar_AllowIDLE = CreateConVar("st_mr_allow_record_idle", "1", "Allow IDLE bits recording.", FCVAR_NOTIFY);
+    g_ConVar_AllowFreeAngle = CreateConVar("st_mr_allow_free_angle", "0", "Allow record and playback with free angle (for debugging only).", FCVAR_NOTIFY);
+    g_ConVar_AllowHostInputs = CreateConVar("st_mr_allow_host_inputs", "0", "Allow sending client inputs to the host console.", FCVAR_NOTIFY);
+    g_ConVar_AllowHelpers = CreateConVar("st_mr_allow_playback_special_helpers", "1", "Allow special helpers while using Play option. Such as: timer reset and removing all infected.", FCVAR_NOTIFY);
+    g_ConVar_TweakDelay = CreateConVar("st_mr_tweak_delay", "1.2", "Set the delay time before record/split.", FCVAR_NOTIFY);
+    g_ConVar_TweakTimeScale = CreateConVar("st_mr_tweak_timescale", "0.25", "Set the timescale value after record/split.", FCVAR_NOTIFY);
+    g_ConVar_TrackerText = CreateConVar("st_mr_tracker_text_level", "1", "Specify how should we display the text (0 - off; 1 - only text; 2 - text with time delimiters).", FCVAR_NOTIFY);
+    RegConsoleCmd("st_mr_stop", Cmd_Stop, "Stop any record/playback.");
+    RegConsoleCmd("st_mr_get_frame", Cmd_GetFrame, "Get current playback frame from the file for debugging.");
+    RegConsoleCmd("st_mr_goto", Cmd_Goto, "Move to specific line during playback (usage: st_mr_goto 150 \"filename\"). Specify only line to manage current playback.");
+    RegConsoleCmd("st_mr_tracker", Cmd_Tracker, "Draw the movement path with info to console.");
+    RegConsoleCmd("st_mr_tracker_clear", Cmd_Tracker, "Clear the movement path.");
+    RegConsoleCmd("st_mr_save", Cmd_Save, "Creates a copy of \"default.txt\" movement and overrides \"quicksave.txt\" with it. Hold SHIFT+R in menu to load the last save.");
+    RegConsoleCmd("stmr", Cmd_MR, "Show Movement Reader menu.");
+    RegConsoleCmd("stmr2", Cmd_MR2, "Show Movement Reader advanced menu.");
+    RegConsoleCmd("stmr3", Cmd_MR3, "Show Movement Reader Menu v3.");
+
+    HookConVarChange(g_ConVar_Record, ConVarChanged);
+    HookConVarChange(g_ConVar_Play, ConVarChanged);
+    HookConVarChange(g_ConVar_Split, ConVarChanged);
+    HookConVarChange(g_ConVar_Stop, ConVarChanged);
+    HookConVarChange(g_ConVar_AllowHostInputs, ConVarChanged_RevokeHostInputs);
+    HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
+    HookEvent("round_end", Event_RoundEnd, EventHookMode_PostNoCopy);
+    HookEvent("weapon_fire", Event_WeaponFire);
+    HookEvent("player_bot_replace", Event_PlayerBotReplace);
+    HookEvent("bot_player_replace", Event_PlayerBotReplace);
+    CreateTimer(3.0, TimerMenuUpdate, _, TIMER_REPEAT);
+    CreateTimer(0.3, TimerCheckPress, _, TIMER_REPEAT);
+    
+    decl String:sFilePath[64];
+    BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "gamedata/st_signs.txt");
+    if (FileExists(sFilePath))
+    {
+        new Handle:hConfig = LoadGameConfigFile("st_signs");
+        StartPrepSDKCall(SDKCall_Player);
+        PrepSDKCall_SetFromConf(hConfig, SDKConf_Signature, "TakeOverBot");
+        g_hTakeOverBot = EndPrepSDKCall();
+        StartPrepSDKCall(SDKCall_Player);
+        PrepSDKCall_SetFromConf(hConfig, SDKConf_Signature, "GoAwayFromKeyboard");
+        g_hGoAwayFromKeyboard = EndPrepSDKCall();
+        CloseHandle(hConfig);
+    }
+    
+    g_hOnPlayEnd = CreateGlobalForward("OnPlayEnd", ET_Ignore, Param_Cell, Param_String);
+    g_hOnPlayLine = CreateGlobalForward("OnPlayLine", ET_Ignore, Param_Cell, Param_String, Param_Cell, Param_Cell);
 }
 
 public ConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	new client = StringToInt(newValue);
-	if (IsPlayer(client))
-	{
-		if (g_ConVar_Record == convar)
-		{
-			if (!g_RecClient[client])
-			{
-				decl String:sFilePath[128], String:sFileName[16];
-				BuildPath(Path_SM, sFilePath, sizeof(sFilePath), MR_DIR);
-				if (!DirExists(sFilePath)) CreateDirectory(sFilePath, 0, true);
-				Format(sFileName, sizeof(sFileName), client > 1 ? "default_%d" : "default", client);
-				BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, sFileName);
-				if ((g_RecFile[client] = OpenFile(sFilePath, "w")) != INVALID_HANDLE)
-				{
-					g_bIsApplyPlayerAction[client] = false;
-					g_RecClient[client] = true;
-					g_RecLine[client][0] = 0;
-					g_RecFlags[client] = 0;
-					g_RecTime[client] = GetGameTime();
-					g_RecFrames[client] = GetGameTickCount();
-					g_sFileName[client] = sFileName;
-					g_sGotoPrevFile[client][0] = 0;
-					RevokeHostInputs();
-					decl Float:fOrigin[3], Float:fAngles[3], Float:fVelocity[3];
-					GetClientAbsOrigin(client, fOrigin);
-					GetClientEyeAngles(client, fAngles);
-					GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVelocity);
-					WriteFileLine(g_RecFile[client], "Origin:%.03f:%.03f:%.03f", fOrigin[0], fOrigin[1], fOrigin[2]);
-					WriteFileLine(g_RecFile[client], "Angles:%.03f:%.03f:%.03f", fAngles[0], fAngles[1], fAngles[2]);
-					WriteFileLine(g_RecFile[client], "Velocity:%.03f:%.03f:%.03f", fVelocity[0], fVelocity[1], fVelocity[2]);
-					PrintToServer("[SM] Recording %N's movement...", client);
-				}
-			}
-		}
-		else if (g_ConVar_Play == convar)
-		{
-			decl String:sFileName[64];
-			GetConVarString(g_ConVar_ForceFile, sFileName, sizeof(sFileName));
-			if (StrEqual(sFileName, "default") && GetConVarBool(g_ConVar_FFA)) Format(sFileName, sizeof(sFileName), client > 1 ? "%s_%d" : "%s", sFileName, client);
-			if (!g_RecClient[client] && !IsPlayerRecFile(sFileName))
-			{
-				decl String:sFilePath[128];
-				BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, sFileName);
-				if (FileExists(sFilePath))
-				{
-					new Handle:hFile = OpenFile(sFilePath, "r");
-					decl String:sFileData[128]; sFileData[0] = 0;
-					decl String:sValue[BLOCK_COUNT][BLOCK_SIZE], Float:fValue[3][3], String:sFileLine[BLOCKS_LEN]; //max. possible line length about 106
-					for (new i; i < BLOCK_COUNT; i++) sValue[i][0] = 0;
-					for (new i; i < 3; i++)
-					{
-						ReadFileLine(hFile, sFileLine, sizeof(sFileLine));
-						Format(sFileData, sizeof(sFileData), "%s%s", sFileData, sFileLine);
-						ExplodeString(sFileLine, ":", sValue, 4, 16);
-						fValue[i][0] = StringToFloat(sValue[1]);
-						fValue[i][1] = StringToFloat(sValue[2]);
-						fValue[i][2] = StringToFloat(sValue[3]);
-					}
-					if (!GetConVarBool(g_ConVar_NoTeleport))
-					{
-						TeleportEntity(client, NULL_VECTOR, fValue[1], fValue[2]);
-						DispatchKeyValueVector(client, "origin", fValue[0]);
-					}
-					sFileData[strlen(sFileData) - 1] = 0;
-					g_sStartData[client] = sFileData;
-					g_sFileName[client] = sFileName;
-					g_iTicks[client] = 0;
-					if (g_hButtons[client] == INVALID_HANDLE)
-					{
-						g_hButtons[client] = CreateArray();
-						g_hAngles[client][0] = CreateArray();
-						g_hAngles[client][1] = CreateArray();
-						g_hWeapons[client] = CreateArray();
-						g_hOrigin[client] = CreateArray(16);
-						g_hVelocity[client] = CreateArray(16);
-						g_hFlags[client] = CreateArray();
-					}
-					ClearArray(g_hButtons[client]);
-					ClearArray(g_hAngles[client][0]);
-					ClearArray(g_hAngles[client][1]);
-					ClearArray(g_hWeapons[client]);
-					ClearArray(g_hOrigin[client]);
-					ClearArray(g_hVelocity[client]);
-					ClearArray(g_hFlags[client]);
-					while (!IsEndOfFile(hFile) && ReadFileLine(hFile, sFileLine, sizeof(sFileLine)))
-					{
-						ExplodeString(sFileLine, ":", sValue, BLOCK_COUNT, BLOCK_SIZE);
-						PushArrayCell(g_hButtons[client], StringToInt(sValue[0]));
-						PushArrayCell(g_hAngles[client][0], StringToFloat(sValue[1]));
-						PushArrayCell(g_hAngles[client][1], StringToFloat(sValue[2]));
-						PushArrayCell(g_hWeapons[client], StringToInt(sValue[3]));
-						PushArrayString(g_hOrigin[client], sValue[4]); sValue[4][0] = 0;
-						PushArrayString(g_hVelocity[client], sValue[5]); sValue[5][0] = 0;
-						PushArrayString(g_hFlags[client], sValue[6]); sValue[6][0] = 0;
-					}
-					CloseHandle(hFile);
-					g_iTicksTotal[client] = GetArraySize(g_hButtons[client]);
-					g_bIsApplyPlayerAction[client] = true;
-				}
-				else PrintToServer("[SM] ERROR: File \"%s\" does not exist!", sFilePath);
-			}
-			else PrintToServer("[SM] ERROR: Cannot play while recording!");
-		}
-		else if (g_ConVar_Split == convar)
-		{
-			if (g_bIsApplyPlayerAction[client] && !g_RecClient[client])
-			{
-				decl String:sFileLine[BLOCKS_LEN], String:sFileName[16];
-				Format(sFileName, sizeof(sFileName), client > 1 ? "default_%d" : "default", client);
-				BuildPath(Path_SM, sFileLine, sizeof(sFileLine), "%s/%s.txt", MR_DIR, sFileName);
-				if ((g_RecFile[client] = OpenFile(sFileLine, "w")) != INVALID_HANDLE)
-				{
-					g_bIsApplyPlayerAction[client] = false;
-					g_RecClient[client] = true;
-					g_RecLine[client][0] = 0;
-					g_RecFlags[client] = 0;
-					g_RecTime[client] = GetGameTime();
-					g_RecFrames[client] = GetGameTickCount();
-					g_sFileName[client] = sFileName;
-					g_sGotoPrevFile[client][0] = 0;
-					RevokeHostInputs();
-					WriteFileLine(g_RecFile[client], g_sStartData[client]);
-					decl String:sFileData[BLOCK_SIZE];
-					for (new i; i < g_iTicks[client]; i++)
-					{
-						Format(sFileLine, BLOCKS_LEN, "%d:%.03f:%.03f:%d", GetArrayCell(g_hButtons[client], i), GetArrayCell(g_hAngles[client][0], i), GetArrayCell(g_hAngles[client][1], i), GetArrayCell(g_hWeapons[client], i));
-						if (GetArrayString(g_hOrigin[client], i, sFileData, BLOCK_SIZE) > 0)
-						{
-							Format(sFileLine, BLOCKS_LEN, "%s:%s", sFileLine, sFileData);
-							if (GetArrayString(g_hVelocity[client], i, sFileData, BLOCK_SIZE) > 0)
-							{
-								Format(sFileLine, BLOCKS_LEN, "%s:%s", sFileLine, sFileData);
-								if (GetArrayString(g_hFlags[client], i, sFileData, BLOCK_SIZE) > 0)
-								{
-									Format(sFileLine, BLOCKS_LEN, "%s:%s", sFileLine, sFileData);
-								}
-							}
-							sFileLine[strlen(sFileLine) - 1] = 0;
-						}
-						WriteFileLine(g_RecFile[client], sFileLine);
-					}
-					PrintToServer("[SM] Rewriting %N's movement from %d line...", client, g_iTicks[client] + 4);
-				}
-			}
-		}
-		else if (g_ConVar_Stop == convar)
-		{
-			ForceStop(client);
-		}
-	}
-	SetConVarInt(convar, 0);
+    new client = StringToInt(newValue);
+    if (IsPlayer(client))
+    {
+        if (g_ConVar_Record == convar)
+        {
+            if (!g_RecClient[client])
+            {
+                decl String:sFilePath[128], String:sFileName[16];
+                BuildPath(Path_SM, sFilePath, sizeof(sFilePath), MR_DIR);
+                if (!DirExists(sFilePath)) CreateDirectory(sFilePath, 0, true);
+                Format(sFileName, sizeof(sFileName), client > 1 ? "default_%d" : "default", client);
+                BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, sFileName);
+                if ((g_RecFile[client] = OpenFile(sFilePath, "w")) != INVALID_HANDLE)
+                {
+                    g_bIsApplyPlayerAction[client] = false;
+                    g_RecClient[client] = true;
+                    g_RecLine[client][0] = 0;
+                    g_RecFlags[client] = 0;
+                    g_RecTime[client] = GetGameTime();
+                    g_RecFrames[client] = GetGameTickCount();
+                    g_sFileName[client] = sFileName;
+                    g_sGotoPrevFile[client][0] = 0;
+                    RevokeHostInputs();
+                    decl Float:fOrigin[3], Float:fAngles[3], Float:fVelocity[3];
+                    GetClientAbsOrigin(client, fOrigin);
+                    GetClientEyeAngles(client, fAngles);
+                    GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVelocity);
+                    WriteFileLine(g_RecFile[client], "Origin:%.03f:%.03f:%.03f", fOrigin[0], fOrigin[1], fOrigin[2]);
+                    WriteFileLine(g_RecFile[client], "Angles:%.03f:%.03f:%.03f", fAngles[0], fAngles[1], fAngles[2]);
+                    WriteFileLine(g_RecFile[client], "Velocity:%.03f:%.03f:%.03f", fVelocity[0], fVelocity[1], fVelocity[2]);
+
+                    // Init recording arrays (reuse playback arrays)
+                    if (g_hButtons[client] == INVALID_HANDLE)
+                    {
+                        g_hButtons[client] = CreateArray();
+                        g_hAngles[client][0] = CreateArray();
+                        g_hAngles[client][1] = CreateArray();
+                        g_hWeapons[client] = CreateArray();
+                        g_hOrigin[client] = CreateArray(16);
+                        g_hVelocity[client] = CreateArray(16);
+                        g_hFlags[client] = CreateArray();
+                    }
+                    ClearArray(g_hButtons[client]);
+                    ClearArray(g_hAngles[client][0]);
+                    ClearArray(g_hAngles[client][1]);
+                    ClearArray(g_hWeapons[client]);
+                    ClearArray(g_hOrigin[client]);
+                    ClearArray(g_hVelocity[client]);
+                    ClearArray(g_hFlags[client]);
+
+                    // Save start data for file header rewrite on resume
+                    g_fRecStartOrigin[client][0] = fOrigin[0];
+                    g_fRecStartOrigin[client][1] = fOrigin[1];
+                    g_fRecStartOrigin[client][2] = fOrigin[2];
+                    g_fRecStartAngles[client][0] = fAngles[0];
+                    g_fRecStartAngles[client][1] = fAngles[1];
+                    g_fRecStartAngles[client][2] = fAngles[2];
+                    g_fRecStartVelocity[client][0] = fVelocity[0];
+                    g_fRecStartVelocity[client][1] = fVelocity[1];
+                    g_fRecStartVelocity[client][2] = fVelocity[2];
+
+                    g_Menu_bRecPaused[client] = false;
+                    g_iRecRewindFrame[client] = 0;
+                    g_iRecRewindSpeed[client] = 1;
+
+                    PrintToServer("[SM] Recording %N's movement...", client);
+                }
+            }
+        }
+        else if (g_ConVar_Play == convar)
+        {
+            decl String:sFileName[64];
+            GetConVarString(g_ConVar_ForceFile, sFileName, sizeof(sFileName));
+            if (StrEqual(sFileName, "default") && GetConVarBool(g_ConVar_FFA)) Format(sFileName, sizeof(sFileName), client > 1 ? "%s_%d" : "%s", sFileName, client);
+            if (!g_RecClient[client] && !IsPlayerRecFile(sFileName))
+            {
+                decl String:sFilePath[128];
+                BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, sFileName);
+                if (FileExists(sFilePath))
+                {
+                    new Handle:hFile = OpenFile(sFilePath, "r");
+                    decl String:sFileData[128]; sFileData[0] = 0;
+                    decl String:sValue[BLOCK_COUNT][BLOCK_SIZE], Float:fValue[3][3], String:sFileLine[BLOCKS_LEN]; //max. possible line length about 106
+                    for (new i; i < BLOCK_COUNT; i++) sValue[i][0] = 0;
+                    for (new i; i < 3; i++)
+                    {
+                        ReadFileLine(hFile, sFileLine, sizeof(sFileLine));
+                        Format(sFileData, sizeof(sFileData), "%s%s", sFileData, sFileLine);
+                        ExplodeString(sFileLine, ":", sValue, 4, 16);
+                        fValue[i][0] = StringToFloat(sValue[1]);
+                        fValue[i][1] = StringToFloat(sValue[2]);
+                        fValue[i][2] = StringToFloat(sValue[3]);
+                    }
+                    if (!GetConVarBool(g_ConVar_NoTeleport))
+                    {
+                        TeleportEntity(client, NULL_VECTOR, fValue[1], fValue[2]);
+                        DispatchKeyValueVector(client, "origin", fValue[0]);
+                    }
+                    sFileData[strlen(sFileData) - 1] = 0;
+                    g_sStartData[client] = sFileData;
+                    g_sFileName[client] = sFileName;
+                    g_iTicks[client] = 0;
+                    if (g_hButtons[client] == INVALID_HANDLE)
+                    {
+                        g_hButtons[client] = CreateArray();
+                        g_hAngles[client][0] = CreateArray();
+                        g_hAngles[client][1] = CreateArray();
+                        g_hWeapons[client] = CreateArray();
+                        g_hOrigin[client] = CreateArray(16);
+                        g_hVelocity[client] = CreateArray(16);
+                        g_hFlags[client] = CreateArray();
+                    }
+                    ClearArray(g_hButtons[client]);
+                    ClearArray(g_hAngles[client][0]);
+                    ClearArray(g_hAngles[client][1]);
+                    ClearArray(g_hWeapons[client]);
+                    ClearArray(g_hOrigin[client]);
+                    ClearArray(g_hVelocity[client]);
+                    ClearArray(g_hFlags[client]);
+                    while (!IsEndOfFile(hFile) && ReadFileLine(hFile, sFileLine, sizeof(sFileLine)))
+                    {
+                        ExplodeString(sFileLine, ":", sValue, BLOCK_COUNT, BLOCK_SIZE);
+                        PushArrayCell(g_hButtons[client], StringToInt(sValue[0]));
+                        PushArrayCell(g_hAngles[client][0], StringToFloat(sValue[1]));
+                        PushArrayCell(g_hAngles[client][1], StringToFloat(sValue[2]));
+                        PushArrayCell(g_hWeapons[client], StringToInt(sValue[3]));
+                        PushArrayString(g_hOrigin[client], sValue[4]); sValue[4][0] = 0;
+                        PushArrayString(g_hVelocity[client], sValue[5]); sValue[5][0] = 0;
+                        PushArrayString(g_hFlags[client], sValue[6]); sValue[6][0] = 0;
+                    }
+                    CloseHandle(hFile);
+                    g_iTicksTotal[client] = GetArraySize(g_hButtons[client]);
+                    g_bIsApplyPlayerAction[client] = true;
+                }
+                else PrintToServer("[SM] ERROR: File \"%s\" does not exist!", sFilePath);
+            }
+            else PrintToServer("[SM] ERROR: Cannot play while recording!");
+        }
+        else if (g_ConVar_Split == convar)
+        {
+            if (g_bIsApplyPlayerAction[client] && !g_RecClient[client])
+            {
+                decl String:sFileLine[BLOCKS_LEN], String:sFileName[16];
+                Format(sFileName, sizeof(sFileName), client > 1 ? "default_%d" : "default", client);
+                BuildPath(Path_SM, sFileLine, sizeof(sFileLine), "%s/%s.txt", MR_DIR, sFileName);
+                if ((g_RecFile[client] = OpenFile(sFileLine, "w")) != INVALID_HANDLE)
+                {
+                    g_bIsApplyPlayerAction[client] = false;
+                    g_RecClient[client] = true;
+                    g_RecLine[client][0] = 0;
+                    g_RecFlags[client] = 0;
+                    g_RecTime[client] = GetGameTime();
+                    g_RecFrames[client] = GetGameTickCount();
+                    g_sFileName[client] = sFileName;
+                    g_sGotoPrevFile[client][0] = 0;
+                    RevokeHostInputs();
+                    WriteFileLine(g_RecFile[client], g_sStartData[client]);
+                    decl String:sFileData[BLOCK_SIZE];
+                    for (new i; i < g_iTicks[client]; i++)
+                    {
+                        Format(sFileLine, BLOCKS_LEN, "%d:%.03f:%.03f:%d", GetArrayCell(g_hButtons[client], i), GetArrayCell(g_hAngles[client][0], i), GetArrayCell(g_hAngles[client][1], i), GetArrayCell(g_hWeapons[client], i));
+                        if (GetArrayString(g_hOrigin[client], i, sFileData, BLOCK_SIZE) > 0)
+                        {
+                            Format(sFileLine, BLOCKS_LEN, "%s:%s", sFileLine, sFileData);
+                            if (GetArrayString(g_hVelocity[client], i, sFileData, BLOCK_SIZE) > 0)
+                            {
+                                Format(sFileLine, BLOCKS_LEN, "%s:%s", sFileLine, sFileData);
+                                if (GetArrayString(g_hFlags[client], i, sFileData, BLOCK_SIZE) > 0)
+                                {
+                                    Format(sFileLine, BLOCKS_LEN, "%s:%s", sFileLine, sFileData);
+                                }
+                            }
+                            sFileLine[strlen(sFileLine) - 1] = 0;
+                        }
+                        WriteFileLine(g_RecFile[client], sFileLine);
+                    }
+                    PrintToServer("[SM] Rewriting %N's movement from %d line...", client, g_iTicks[client] + 4);
+                }
+            }
+        }
+        else if (g_ConVar_Stop == convar)
+        {
+            ForceStop(client);
+        }
+    }
+    SetConVarInt(convar, 0);
 }
 
 public Action:OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3], float angles[3], int& weapon)
 {
-	if (g_Menu_bDelay[client])
-	{
-		if ((GetGameTime() - g_Menu_fDelayTime[client] + 0.001) < GetConVarFloat(g_ConVar_TweakDelay))
-		{
-			ShowMenu(client);
-			return Plugin_Continue;
-		}
-		if (client == 1) SetConVarFloat(FindConVar("host_timescale"), GetConVarFloat(g_ConVar_TweakTimeScale));
-		if (g_bIsApplyPlayerAction[client]) SetConVarInt(g_ConVar_Split, client);
-		else if (!g_RecClient[client])
-		{
-			g_Menu_iGotoTicks[client] = 0;	//use?
-			g_Menu_GotoUsage[client] = false;
-			SetConVarInt(g_ConVar_Record, client);
-			if (GetConVarBool(g_ConVar_AllowHelpers))
-			{
-				decl String:sKeyValue[128];
-				Format(sKeyValue, sizeof(sKeyValue), "if (\"g_ST\" in getroottable()) {SpeedrunStart(); CPSetTime(%f)}", GetGameFrameTime());
-				SetVariantString(sKeyValue);
-				AcceptEntityInput(client, "RunScriptCode");
-			}
-		}
-		ResetConVar(g_ConVar_ForceFile);
-		ClientCommand(client, "playgamesound buttons/bell1.wav");
-		if (GetEntityMoveType(client) == MOVETYPE_NONE) SetEntityMoveType(client, MOVETYPE_WALK);
-		g_Menu_Goto[client] = false;
-		g_Menu_bDelay[client] = false;
-		ShowMenu(client);
-		if (g_Menu_bLegacy[client] && g_Menu_GotoUsage[client])
-		{
-			g_Menu_bLegacy[client] = false;
-			RequestFrame(RF_HoldLegacy, client);
-		}
-	}
-	if (g_RecClient[client])
-	{
-		new item;
-		if (weapon > 0)
-		{
-			decl String:sClass[64];
-			GetEntityClassname(weapon, sClass, sizeof(sClass));
-			for (new i = 1; i < ITEMS_COUNT; i++)
-			{
-				if (StrEqual(sClass, g_Items[i]))
-				{
-					item = i;
-					break;
-				}
-			}
-		}
-		if (GetConVarBool(g_ConVar_ExRecord) && !g_Menu_bLegacy[client])
-		{
-			decl Float:fPos[3], Float:fVel[3];
-			GetClientAbsOrigin(client, fPos);
-			GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVel);
-			new flags = GetEntityFlags(client), plrFlags;
-			if (flags & FL_ONGROUND) plrFlags |= FL_ONGROUND;
-			if (flags & FL_DUCKING) plrFlags |= FL_DUCKING;
-			if (GetEntProp(client, Prop_Send, "m_duckUntilOnGround")) plrFlags |= (1 << 2);
-			if (GetEntProp(client, Prop_Send, "m_bDucking")) plrFlags |= (1 << 3);
-			Format(g_RecLine[client], BLOCKS_LEN, "%d:%.03f:%.03f:%d:%.03f, %.03f, %.03f:%.03f, %.03f, %.03f:%d", buttons, angles[0], angles[1], item, fPos[0], fPos[1], fPos[2], fVel[0], fVel[1], fVel[2], plrFlags);
-		}
-		else Format(g_RecLine[client], 64, "%d:%.03f:%.03f:%d", buttons, angles[0], angles[1], item);
-	}
-	else if (g_bIsApplyPlayerAction[client])
-	{
-		if (g_iTicksTotal[client] > g_iTicks[client])
-		{
-			if (g_Menu_Goto[client])
-			{
-				if (!g_Menu_FastSplit[client])
-				{
-					static bool _Keylock[MAXCLIENTS + 1];
-					static float _fKeylockTime[MAXCLIENTS + 1];
-					if (buttons & (IN_MOVELEFT | IN_MOVERIGHT))
-					{
-						g_Menu_Goto_iWarnMsg[client] = -1;	// reset the issue-checker timer to prevent the same frame pick
-						g_Menu_IsRew[client] = true;
-						RequestFrame(RF_RewReset, client);
-						if (!_Keylock[client])
-						{
-							if (buttons & IN_MOVELEFT)
-							{
-								g_iTicks[client] = g_iTicks[client] > 0 ? g_iTicks[client] - 1 : 0;
-								buttons &= ~IN_MOVELEFT;
-							}
-							if (buttons & IN_MOVERIGHT)
-							{
-								g_iTicks[client] = g_iTicks[client] < g_iTicksTotal[client] - 1 ? g_iTicks[client] + 1: g_iTicksTotal[client] - 1;
-								buttons &= ~IN_MOVERIGHT;
-							}
-							g_Menu_iGotoTicks[client] = g_iTicks[client];
-							ShowMenu(client);
-							if (!g_Menu_Active[client]) g_Menu_Active[client] = true;
-						}
-						else if (_fKeylockTime[client] && (GetGameTime() - _fKeylockTime[client]) > 0.25) _Keylock[client] = false;
-						if (!_fKeylockTime[client])
-						{
-							_Keylock[client] = true;
-							_fKeylockTime[client] = GetGameTime();
-						}
-					}
-					else
-					{
-						if (_fKeylockTime[client])
-						{
-							_Keylock[client] = false;
-							_fKeylockTime[client] = 0.0;
-						}
-						g_Menu_iGotoTicks[client] = g_iTicks[client];
-					}
-				}
-				if (!g_Menu_IsRew[client])
-				{
-					bool hasFlags;
-					decl String:sFileData[BLOCK_SIZE];
-					if (GetArrayString(g_hFlags[client], g_iTicks[client], sFileData, BLOCK_SIZE) > 0)
-					{
-						hasFlags = true;
-						static int _curTick[MAXCLIENTS + 1] = {-1, ...};
-						static bool _warnd[MAXCLIENTS + 1];
-						bool bIssueJump, bIssueStraight, bIssueDucking, bIssue;
-						if (GetEntityMoveType(client) != MOVETYPE_NONE) SetEntityMoveType(client, MOVETYPE_NONE);
-						new plrFlags = StringToInt(sFileData), flags = GetEntityFlags(client);
-						if (GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") == -1)
-						{
-							if (plrFlags & FL_DUCKING && !(flags & FL_DUCKING)) bIssueJump = true;
-							else bIssueStraight = !(plrFlags & FL_DUCKING) && flags & FL_DUCKING;
-						}
-						else if (plrFlags & (1 << 3)) bIssueDucking = true;
-						bIssue = bIssueJump || bIssueStraight || bIssueDucking;
-						
-						if (_curTick[client] != g_iTicks[client] || g_Menu_Goto_iWarnMsg[client] == -1)
-						{
-							_curTick[client] = g_iTicks[client];
-							_warnd[client] = false;
-							g_Menu_Goto_iWarnMsg[client] = GetGameTickCount();
-						}
-						if ((GetGameTickCount() - g_Menu_Goto_iWarnMsg[client]) < 6 && !_warnd[client])
-						{
-							g_Menu_IsFixing[client] = true;
-							RequestFrame(RF_FixReset, client);
-						}
-						if (bIssue)
-						{
-							if (g_Menu_IsFixing[client])
-							{
-								static bool _skipFrame[MAXCLIENTS + 1];
-								if (!bIssueDucking && !_skipFrame[client])
-								{
-									//@TODO: apply another duck/unduck method?
-									SetEntityMoveType(client, MOVETYPE_WALK);
-									SetEntPropEnt(client, Prop_Send, "m_hGroundEntity", 0);
-									if (bIssueStraight) SetEntityFlags(client, flags & ~FL_DUCKING);
-									else
-									{
-										buttons |= IN_JUMP;
-										SetEntProp(client, Prop_Data, "m_afButtonDisabled", GetEntProp(client, Prop_Data, "m_afButtonDisabled") & ~IN_JUMP);
-									}
-								}
-								_skipFrame[client] = !_skipFrame[client];
-							}
-							else if (!_warnd[client])
-							{
-								_warnd[client] = true;
-								PrintToChat(client, "[SM] Unable to sync movement flags for this (%d) tick. Prolly that after split, a movement can be incorrect.", g_iTicks[client] + 4);
-								ClientCommand(client, "playgamesound common/bugreporter_failed.wav");
-							}
-						}
-						SetEntProp(client, Prop_Send, "m_duckUntilOnGround", plrFlags & (1 << 2) ? 1 : 0);
-					}
-					if (g_Menu_FastSplit[client] && (!g_Menu_IsFixing[client] || !hasFlags))
-					{
-						g_Menu_FastSplit[client] = false;
-						Menu menu = new Menu(MenuHandler, MenuAction);
-						MenuHandler_AdvMenu(menu, MenuAction, client, 1);
-						delete menu;
-					}
-				}
-			}
-			
-			new Float:fAngles[3], Float:fVelocity[2], mask = GetArrayCell(g_hButtons[client], g_iTicks[client]), item = GetArrayCell(g_hWeapons[client], g_iTicks[client]);
-			fAngles[0] = GetArrayCell(g_hAngles[client][0], g_iTicks[client]);
-			fAngles[1] = GetArrayCell(g_hAngles[client][1], g_iTicks[client]);
-			if (g_Menu_Goto[client] || GetConVarBool(g_ConVar_ExPlay) && !g_Menu_bLegacy[client])
-			{
-				decl String:sFileData[BLOCK_SIZE];
-				if (GetArrayString(g_hOrigin[client], g_iTicks[client], sFileData, BLOCK_SIZE) > 0)
-				{
-					decl String:sValue[3][16];
-					if (ExplodeString(sFileData, ",", sValue, 3, 16) == 3)
-					{
-						decl Float:fValue[3];
-						for (new i; i < 3; i++) fValue[i] = StringToFloat(sValue[i]);
-						DispatchKeyValueVector(client, "origin", fValue);
-						if (GetArrayString(g_hVelocity[client], g_iTicks[client], sFileData, BLOCK_SIZE) > 0 && ExplodeString(sFileData, ",", sValue, 3, 16) == 3)
-						{
-							for (new i; i < 3; i++) fValue[i] = StringToFloat(sValue[i]);
-							TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fValue);
-						}
-					}
-				}
-				if (g_Menu_Goto[client])
-				{
-					TeleportEntity(client, NULL_VECTOR, GetConVarBool(g_ConVar_AllowFreeAngle) || mask & IN_FREE_ANGLE ? NULL_VECTOR : fAngles, NULL_VECTOR);
-					return Plugin_Continue;
-				}
-			}
-			
-			if (mask & IN_FORWARD) fVelocity[0] += PLAYER_VEL;
-			if (mask & IN_BACK) fVelocity[0] -= PLAYER_VEL;
-			if (mask & IN_MOVERIGHT) fVelocity[1] += PLAYER_VEL;
-			if (mask & IN_MOVELEFT) fVelocity[1] -= PLAYER_VEL;
-			if (item > 0) FakeClientCommand(client, "use %s", g_Items[item]);
-			if (mask & IN_IDLE) ST_Idle(client);
-			if (mask & IN_TAKEOVER) ST_Idle(client, true);
-			if (buttons & IN_ATTACK) g_bIsClientFired[client] = true;
-			else g_bIsClientFired[client] = false;
-			if (mask & IN_USE)
-			{
-				FakeClientCommand(client, "choose_opendoor");
-				FakeClientCommand(client, "choose_closedoor");
-			}
-			if (client == 1 && GetConVarBool(g_ConVar_AllowHostInputs) && !IsDedicatedServer() && g_iTicks[client] + 1 < g_iTicksTotal[client])
-			{
-				new next = GetArrayCell(g_hButtons[client], g_iTicks[client] + 1);
-				if (next & IN_ATTACK) ServerCommand("+attack");
-				else ServerCommand("-attack");
-				if (next & IN_DUCK) ServerCommand("+duck");
-				else ServerCommand("-duck");
-			}
-			TeleportEntity(client, NULL_VECTOR, GetConVarBool(g_ConVar_AllowFreeAngle) || mask & IN_FREE_ANGLE ? NULL_VECTOR : fAngles, NULL_VECTOR);
-			vel[0] = fVelocity[0];
-			vel[1] = fVelocity[1];
-			buttons |= mask;
-			g_iTicks[client]++;
-			
-			decl String:sFileName[64], String:sKeyValue[128]; sFileName = g_sFileName[client];
-			new ticks = g_iTicks[client] + 3;
-			Call_StartForward(g_hOnPlayLine);
-			Call_PushCell(client);
-			Call_PushString(sFileName);
-			Call_PushCell(ticks);
-			Call_PushCell(mask);
-			Call_Finish();
-			Format(sKeyValue, sizeof(sKeyValue), "if (\"OnPlayLine\" in getroottable()) OnPlayLine(self, \"%s\", %d, %d)", sFileName, ticks, mask);
-			SetVariantString(sKeyValue);
-			AcceptEntityInput(client, "RunScriptCode");
-		}
-		else
-		{
-			g_bIsApplyPlayerAction[client] = false;
-			decl String:sFileName[64], String:sKeyValue[128]; sFileName = g_sFileName[client];
-			PrintToServer("[SM] %N's playback \"%s\" is finished.", client, sFileName);
-			Call_StartForward(g_hOnPlayEnd);
-			Call_PushCell(client);
-			Call_PushString(sFileName);
-			Call_Finish();
-			Format(sKeyValue, sizeof(sKeyValue), "if (\"OnPlayEnd\" in getroottable()) OnPlayEnd(self, \"%s\")", sFileName);
-			SetVariantString(sKeyValue);
-			AcceptEntityInput(client, "RunScriptCode");
-			if (g_Menu_Active[client]) ShowMenu(client);
-			if (client == 1) RevokeHostInputs();
-		}
-	}
-	return Plugin_Continue;
+    if (g_Menu_bDelay[client])
+    {
+        if ((GetGameTime() - g_Menu_fDelayTime[client] + 0.001) < GetConVarFloat(g_ConVar_TweakDelay))
+        {
+            ShowMenu(client);
+            return Plugin_Continue;
+        }
+        if (client == 1) SetConVarFloat(FindConVar("host_timescale"), GetConVarFloat(g_ConVar_TweakTimeScale));
+        if (g_bIsApplyPlayerAction[client]) SetConVarInt(g_ConVar_Split, client);
+        else if (!g_RecClient[client])
+        {
+            g_Menu_iGotoTicks[client] = 0;	//use?
+            g_Menu_GotoUsage[client] = false;
+            SetConVarInt(g_ConVar_Record, client);
+            if (GetConVarBool(g_ConVar_AllowHelpers))
+            {
+                decl String:sKeyValue[128];
+                Format(sKeyValue, sizeof(sKeyValue), "if (\"g_ST\" in getroottable()) {SpeedrunStart(); CPSetTime(%f)}", GetGameFrameTime());
+                SetVariantString(sKeyValue);
+                AcceptEntityInput(client, "RunScriptCode");
+            }
+        }
+        ResetConVar(g_ConVar_ForceFile);
+        ClientCommand(client, "playgamesound buttons/bell1.wav");
+        if (GetEntityMoveType(client) == MOVETYPE_NONE) SetEntityMoveType(client, MOVETYPE_WALK);
+        g_Menu_Goto[client] = false;
+        g_Menu_bDelay[client] = false;
+        ShowMenu(client);
+        if (g_Menu_bLegacy[client] && g_Menu_GotoUsage[client])
+        {
+            g_Menu_bLegacy[client] = false;
+            RequestFrame(RF_HoldLegacy, client);
+        }
+    }
+    if (g_RecClient[client] && !g_Menu_bRecPaused[client])
+    {
+        new item;
+        if (weapon > 0)
+        {
+            decl String:sClass[64];
+            GetEntityClassname(weapon, sClass, sizeof(sClass));
+            for (new i = 1; i < ITEMS_COUNT; i++)
+            {
+                if (StrEqual(sClass, g_Items[i]))
+                {
+                    item = i;
+                    break;
+                }
+            }
+        }
+        if (GetConVarBool(g_ConVar_ExRecord) && !g_Menu_bLegacy[client])
+        {
+            decl Float:fPos[3], Float:fVel[3];
+            GetClientAbsOrigin(client, fPos);
+            GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVel);
+            new flags = GetEntityFlags(client), plrFlags;
+            if (flags & FL_ONGROUND) plrFlags |= FL_ONGROUND;
+            if (flags & FL_DUCKING) plrFlags |= FL_DUCKING;
+            if (GetEntProp(client, Prop_Send, "m_duckUntilOnGround")) plrFlags |= (1 << 2);
+            if (GetEntProp(client, Prop_Send, "m_bDucking")) plrFlags |= (1 << 3);
+            Format(g_RecLine[client], BLOCKS_LEN, "%d:%.03f:%.03f:%d:%.03f, %.03f, %.03f:%.03f, %.03f, %.03f:%d", buttons, angles[0], angles[1], item, fPos[0], fPos[1], fPos[2], fVel[0], fVel[1], fVel[2], plrFlags);
+
+            decl String:sFileData[BLOCK_SIZE];
+            PushArrayCell(g_hButtons[client], buttons);
+            PushArrayCell(g_hAngles[client][0], angles[0]);
+            PushArrayCell(g_hAngles[client][1], angles[1]);
+            PushArrayCell(g_hWeapons[client], item);
+            Format(sFileData, BLOCK_SIZE, "%.03f, %.03f, %.03f", fPos[0], fPos[1], fPos[2]);
+            PushArrayString(g_hOrigin[client], sFileData);
+            Format(sFileData, BLOCK_SIZE, "%.03f, %.03f, %.03f", fVel[0], fVel[1], fVel[2]);
+            PushArrayString(g_hVelocity[client], sFileData);
+            IntToString(plrFlags, sFileData, sizeof(sFileData));
+            PushArrayString(g_hFlags[client], sFileData);
+        }
+        else
+        {
+            Format(g_RecLine[client], 64, "%d:%.03f:%.03f:%d", buttons, angles[0], angles[1], item);
+
+            PushArrayCell(g_hButtons[client], buttons);
+            PushArrayCell(g_hAngles[client][0], angles[0]);
+            PushArrayCell(g_hAngles[client][1], angles[1]);
+            PushArrayCell(g_hWeapons[client], item);
+            PushArrayString(g_hOrigin[client], "");
+            PushArrayString(g_hVelocity[client], "");
+            PushArrayString(g_hFlags[client], "");
+        }
+    }
+    else if (g_bIsApplyPlayerAction[client])
+    {
+        if (g_iTicksTotal[client] > g_iTicks[client])
+        {
+            if (g_Menu_Goto[client])
+            {
+                if (!g_Menu_FastSplit[client])
+                {
+                    static bool _Keylock[MAXCLIENTS + 1];
+                    static float _fKeylockTime[MAXCLIENTS + 1];
+                    if (buttons & (IN_MOVELEFT | IN_MOVERIGHT))
+                    {
+                        g_Menu_Goto_iWarnMsg[client] = -1;	// reset the issue-checker timer to prevent the same frame pick
+                        g_Menu_IsRew[client] = true;
+                        RequestFrame(RF_RewReset, client);
+                        if (!_Keylock[client])
+                        {
+                            if (buttons & IN_MOVELEFT)
+                            {
+                                g_iTicks[client] = g_iTicks[client] > 0 ? g_iTicks[client] - 1 : 0;
+                                buttons &= ~IN_MOVELEFT;
+                            }
+                            if (buttons & IN_MOVERIGHT)
+                            {
+                                g_iTicks[client] = g_iTicks[client] < g_iTicksTotal[client] - 1 ? g_iTicks[client] + 1: g_iTicksTotal[client] - 1;
+                                buttons &= ~IN_MOVERIGHT;
+                            }
+                            g_Menu_iGotoTicks[client] = g_iTicks[client];
+                            ShowMenu(client);
+                            if (!g_Menu_Active[client]) g_Menu_Active[client] = true;
+                        }
+                        else if (_fKeylockTime[client] && (GetGameTime() - _fKeylockTime[client]) > 0.25) _Keylock[client] = false;
+                        if (!_fKeylockTime[client])
+                        {
+                            _Keylock[client] = true;
+                            _fKeylockTime[client] = GetGameTime();
+                        }
+                    }
+                    else
+                    {
+                        if (_fKeylockTime[client])
+                        {
+                            _Keylock[client] = false;
+                            _fKeylockTime[client] = 0.0;
+                        }
+                        g_Menu_iGotoTicks[client] = g_iTicks[client];
+                    }
+                }
+                if (!g_Menu_IsRew[client])
+                {
+                    bool hasFlags;
+                    decl String:sFileData[BLOCK_SIZE];
+                    if (GetArrayString(g_hFlags[client], g_iTicks[client], sFileData, BLOCK_SIZE) > 0)
+                    {
+                        hasFlags = true;
+                        static int _curTick[MAXCLIENTS + 1] = {-1, ...};
+                        static bool _warnd[MAXCLIENTS + 1];
+                        bool bIssueJump, bIssueStraight, bIssueDucking, bIssue;
+                        if (GetEntityMoveType(client) != MOVETYPE_NONE) SetEntityMoveType(client, MOVETYPE_NONE);
+                        new plrFlags = StringToInt(sFileData), flags = GetEntityFlags(client);
+                        if (GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") == -1)
+                        {
+                            if (plrFlags & FL_DUCKING && !(flags & FL_DUCKING)) bIssueJump = true;
+                            else bIssueStraight = !(plrFlags & FL_DUCKING) && flags & FL_DUCKING;
+                        }
+                        else if (plrFlags & (1 << 3)) bIssueDucking = true;
+                        bIssue = bIssueJump || bIssueStraight || bIssueDucking;
+                        
+                        if (_curTick[client] != g_iTicks[client] || g_Menu_Goto_iWarnMsg[client] == -1)
+                        {
+                            _curTick[client] = g_iTicks[client];
+                            _warnd[client] = false;
+                            g_Menu_Goto_iWarnMsg[client] = GetGameTickCount();
+                        }
+                        if ((GetGameTickCount() - g_Menu_Goto_iWarnMsg[client]) < 6 && !_warnd[client])
+                        {
+                            g_Menu_IsFixing[client] = true;
+                            RequestFrame(RF_FixReset, client);
+                        }
+                        if (bIssue)
+                        {
+                            if (g_Menu_IsFixing[client])
+                            {
+                                static bool _skipFrame[MAXCLIENTS + 1];
+                                if (!bIssueDucking && !_skipFrame[client])
+                                {
+                                    //@TODO: apply another duck/unduck method?
+                                    SetEntityMoveType(client, MOVETYPE_WALK);
+                                    SetEntPropEnt(client, Prop_Send, "m_hGroundEntity", 0);
+                                    if (bIssueStraight) SetEntityFlags(client, flags & ~FL_DUCKING);
+                                    else
+                                    {
+                                        buttons |= IN_JUMP;
+                                        SetEntProp(client, Prop_Data, "m_afButtonDisabled", GetEntProp(client, Prop_Data, "m_afButtonDisabled") & ~IN_JUMP);
+                                    }
+                                }
+                                _skipFrame[client] = !_skipFrame[client];
+                            }
+                            else if (!_warnd[client])
+                            {
+                                _warnd[client] = true;
+                                PrintToChat(client, "[SM] Unable to sync movement flags for this (%d) tick. Prolly that after split, a movement can be incorrect.", g_iTicks[client] + 4);
+                                ClientCommand(client, "playgamesound common/bugreporter_failed.wav");
+                            }
+                        }
+                        SetEntProp(client, Prop_Send, "m_duckUntilOnGround", plrFlags & (1 << 2) ? 1 : 0);
+                    }
+                    if (g_Menu_FastSplit[client] && (!g_Menu_IsFixing[client] || !hasFlags))
+                    {
+                        g_Menu_FastSplit[client] = false;
+                        Menu menu = new Menu(MenuHandler);
+                        MenuHandler_AdvMenu(menu, MenuAction_Select, client, 1);
+                        delete menu;
+                    }
+                }
+            }
+            
+            new Float:fAngles[3], Float:fVelocity[2], mask = GetArrayCell(g_hButtons[client], g_iTicks[client]), item = GetArrayCell(g_hWeapons[client], g_iTicks[client]);
+            fAngles[0] = GetArrayCell(g_hAngles[client][0], g_iTicks[client]);
+            fAngles[1] = GetArrayCell(g_hAngles[client][1], g_iTicks[client]);
+            if (g_Menu_Goto[client] || GetConVarBool(g_ConVar_ExPlay) && !g_Menu_bLegacy[client])
+            {
+                decl String:sFileData[BLOCK_SIZE];
+                if (GetArrayString(g_hOrigin[client], g_iTicks[client], sFileData, BLOCK_SIZE) > 0)
+                {
+                    decl String:sValue[3][16];
+                    if (ExplodeString(sFileData, ",", sValue, 3, 16) == 3)
+                    {
+                        decl Float:fValue[3];
+                        for (new i; i < 3; i++) fValue[i] = StringToFloat(sValue[i]);
+                        DispatchKeyValueVector(client, "origin", fValue);
+                        if (GetArrayString(g_hVelocity[client], g_iTicks[client], sFileData, BLOCK_SIZE) > 0 && ExplodeString(sFileData, ",", sValue, 3, 16) == 3)
+                        {
+                            for (new i; i < 3; i++) fValue[i] = StringToFloat(sValue[i]);
+                            TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fValue);
+                        }
+                    }
+                }
+                if (g_Menu_Goto[client])
+                {
+                    TeleportEntity(client, NULL_VECTOR, GetConVarBool(g_ConVar_AllowFreeAngle) || mask & IN_FREE_ANGLE ? NULL_VECTOR : fAngles, NULL_VECTOR);
+                    return Plugin_Continue;
+                }
+            }
+            
+            if (mask & IN_FORWARD) fVelocity[0] += PLAYER_VEL;
+            if (mask & IN_BACK) fVelocity[0] -= PLAYER_VEL;
+            if (mask & IN_MOVERIGHT) fVelocity[1] += PLAYER_VEL;
+            if (mask & IN_MOVELEFT) fVelocity[1] -= PLAYER_VEL;
+            if (item > 0) FakeClientCommand(client, "use %s", g_Items[item]);
+            if (mask & IN_IDLE) ST_Idle(client);
+            if (mask & IN_TAKEOVER) ST_Idle(client, true);
+            if (buttons & IN_ATTACK) g_bIsClientFired[client] = true;
+            else g_bIsClientFired[client] = false;
+            if (mask & IN_USE)
+            {
+                FakeClientCommand(client, "choose_opendoor");
+                FakeClientCommand(client, "choose_closedoor");
+            }
+            if (client == 1 && GetConVarBool(g_ConVar_AllowHostInputs) && !IsDedicatedServer() && g_iTicks[client] + 1 < g_iTicksTotal[client])
+            {
+                new next = GetArrayCell(g_hButtons[client], g_iTicks[client] + 1);
+                if (next & IN_ATTACK) ServerCommand("+attack");
+                else ServerCommand("-attack");
+                if (next & IN_DUCK) ServerCommand("+duck");
+                else ServerCommand("-duck");
+            }
+            TeleportEntity(client, NULL_VECTOR, GetConVarBool(g_ConVar_AllowFreeAngle) || mask & IN_FREE_ANGLE ? NULL_VECTOR : fAngles, NULL_VECTOR);
+            vel[0] = fVelocity[0];
+            vel[1] = fVelocity[1];
+            buttons |= mask;
+            g_iTicks[client]++;
+            
+            decl String:sFileName[64], String:sKeyValue[128]; sFileName = g_sFileName[client];
+            new ticks = g_iTicks[client] + 3;
+            Call_StartForward(g_hOnPlayLine);
+            Call_PushCell(client);
+            Call_PushString(sFileName);
+            Call_PushCell(ticks);
+            Call_PushCell(mask);
+            Call_Finish();
+            Format(sKeyValue, sizeof(sKeyValue), "if (\"OnPlayLine\" in getroottable()) OnPlayLine(self, \"%s\", %d, %d)", sFileName, ticks, mask);
+            SetVariantString(sKeyValue);
+            AcceptEntityInput(client, "RunScriptCode");
+        }
+        else
+        {
+            g_bIsApplyPlayerAction[client] = false;
+            decl String:sFileName[64], String:sKeyValue[128]; sFileName = g_sFileName[client];
+            PrintToServer("[SM] %N's playback \"%s\" is finished.", client, sFileName);
+            Call_StartForward(g_hOnPlayEnd);
+            Call_PushCell(client);
+            Call_PushString(sFileName);
+            Call_Finish();
+            Format(sKeyValue, sizeof(sKeyValue), "if (\"OnPlayEnd\" in getroottable()) OnPlayEnd(self, \"%s\")", sFileName);
+            SetVariantString(sKeyValue);
+            AcceptEntityInput(client, "RunScriptCode");
+            if (g_Menu_Active[client]) ShowMenu(client);
+            if (client == 1) RevokeHostInputs();
+        }
+    }
+    return Plugin_Continue;
 }
 
 public RF_RewReset(any:client) g_Menu_IsRew[client] = false;
@@ -713,140 +806,140 @@ public RF_HoldLegacy(any:client) g_Menu_bLegacy[client] = true;
 
 public OnPlayerRunCmdPost(int client)
 {
-	if (g_RecClient[client] && strlen(g_RecLine[client]) > 0)
-	{
-		if (g_RecFlags[client] && GetConVarBool(g_ConVar_AllowIDLE))
-		{
-			new String:sValue[BLOCK_COUNT][BLOCK_SIZE];
-			new block_count = ExplodeString(g_RecLine[client], ":", sValue, BLOCK_COUNT, BLOCK_SIZE);
-			Format(sValue[0], BLOCK_SIZE, "%d", g_RecFlags[client] |= StringToInt(sValue[0]));
-			if (g_RecFlags[client] & IN_TAKEOVER)
-			{
-				decl Float:fAngles[3];
-				GetClientEyeAngles(client, fAngles);
-				Format(sValue[1], BLOCK_SIZE, "%.03f", fAngles[0]);
-				Format(sValue[2], BLOCK_SIZE, "%.03f", fAngles[1]);
-			}
-			ImplodeStrings(sValue, block_count, ":", g_RecLine[client], BLOCKS_LEN);
-			g_RecFlags[client] = 0;
-		}
-		WriteFileLine(g_RecFile[client], g_RecLine[client]);
-	}
-	else if (g_bIsApplyPlayerAction[client])
-	{
-		if (GetConVarInt(g_ConVar_Debug) == client || g_Menu_eDebug[client] == 2)
-		{
-			static int _curTick[MAXCLIENTS + 1] = {-1, ...};
-			if (_curTick[client] != g_iTicks[client])
-			{
-				_curTick[client] = g_iTicks[client];
-				decl Float:fVel[3], Float:fVel2D[3], String:sFileData[BLOCK_SIZE], String:sValue[3][16], String:sDebugInfo[128];
-				new Float:fAngles[3], idx = g_Menu_Goto[client] ? g_iTicks[client] : g_iTicks[client] - 1, mask = GetArrayCell(g_hButtons[client], idx), item = GetArrayCell(g_hWeapons[client], idx);
-				new bool:exmode = GetConVarInt(g_ConVar_ExPlay) && !g_Menu_bLegacy[client] && GetArrayString(g_hOrigin[client], idx, sFileData, BLOCK_SIZE) > 0 && ExplodeString(sFileData, ",", sValue, 3, 16) == 3;
-				fAngles[0] = GetArrayCell(g_hAngles[client][0], idx);
-				fAngles[1] = GetArrayCell(g_hAngles[client][1], idx);
-				GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVel); fVel2D = fVel; fVel2D[2] = 0.0;
-				IntToString(GetEntProp(client, Prop_Send, "m_fFlags"), sDebugInfo, sizeof(sDebugInfo));
-				if (g_Menu_Goto[client] && GetArrayString(g_hFlags[client], idx, sFileData, BLOCK_SIZE) > 0) Format(sDebugInfo, sizeof(sDebugInfo), "%s:%d", sDebugInfo, StringToInt(sFileData));
-				Format(sDebugInfo, sizeof(sDebugInfo), "%d >> %d:%.03f:%.03f:%d%s | VEL: %.03f | UPS: %.03f | %s | %N | %s", idx + 4, mask, fAngles[0], fAngles[1], item, exmode ? ":EXMODE" : "", GetVectorLength(fVel), GetVectorLength(fVel2D), sDebugInfo, client, g_sFileName[client]);
-				if (GetConVarInt(g_ConVar_Debug) == client) PrintToServer(sDebugInfo);
-				else if (g_Menu_eDebug[client] == 2) PrintToConsole(client, sDebugInfo);
-			}
-		}
-	}
-	if (g_Menu_eDebug[client] == 1)
-	{
-		decl String:sKeyValue[256], Float:fVel[3], Float:fVel2D[3];
-		GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVel); fVel2D = fVel; fVel2D[2] = 0.0;
-		Format(sKeyValue, sizeof(sKeyValue), "g_STLib.Vars.HUD.Fields.debug.dataval = \"UPS:       %.03f\\nVEL:        %.03f\"", GetVectorLength(fVel2D), GetVectorLength(fVel));
-		SetVariantString(sKeyValue);
-		AcceptEntityInput(client, "RunScriptCode");
-		Format(sKeyValue, sizeof(sKeyValue), "g_STLib.Vars.HUD.Fields.debug.dataval += \"\\nLine:       ");
-		if (g_bIsApplyPlayerAction[client])
-		{
-			decl String:sTime[16], String:sFileData[BLOCK_SIZE];
-			new tick = g_Menu_Goto[client] ? g_iTicks[client] + 1: g_iTicks[client];
-			GetDisplayTime(sTime, sizeof(sTime), tick);
-			Format(sKeyValue, sizeof(sKeyValue), "%s%d / %d (%s)%s\"", sKeyValue, tick + 3, g_iTicksTotal[client] + 3, sTime, !GetArrayString(g_hOrigin[client], g_Menu_Goto[client] ? g_iTicks[client] : g_iTicks[client] - 1, sFileData, BLOCK_SIZE) || g_Menu_bLegacy[client] || !GetConVarInt(g_ConVar_ExPlay) ? " LEGACY" : "");
-		}
-		else StrCat(sKeyValue, sizeof(sKeyValue), "N/A\"");
-		SetVariantString(sKeyValue);
-		AcceptEntityInput(client, "RunScriptCode");
-		Format(sKeyValue, sizeof(sKeyValue), "g_STLib.Vars.HUD.Fields.debug.dataval += \"\\nFlags:      %d", GetEntProp(client, Prop_Send, "m_fFlags"));
-		if (g_bIsApplyPlayerAction[client] && g_Menu_Goto[client])
-		{
-			decl String:sFileData[8];
-			if (GetArrayString(g_hFlags[client], g_iTicks[client], sFileData, BLOCK_SIZE) > 0)
-			{
-				Format(sKeyValue, sizeof(sKeyValue), "%s:%d", sKeyValue, StringToInt(sFileData));
-			}
-		}
-		StrCat(sKeyValue, sizeof(sKeyValue), "\"");
-		SetVariantString(sKeyValue);
-		AcceptEntityInput(client, "RunScriptCode");
-		int mask;
-		if (g_bIsApplyPlayerAction[client]) mask = GetArrayCell(g_hButtons[client], g_Menu_Goto[client] ? g_iTicks[client] : g_iTicks[client] - 1);
-		else mask = GetClientButtons(client);
-		Format(sKeyValue, sizeof(sKeyValue), "g_STLib.Vars.HUD.Fields.debug2.dataval = \"\\n\\n\\n\\n\\nButtons:  %d", mask);
-		if (mask)
-		{
-			decl String:sName[2][16];
-			for (int i = 1; i <= 29; i++)
-			{
-				if (mask & StringToInt(g_Buttons[i]))
-				{
-					ExplodeString(g_Buttons[i], ":", sName, 2, 16);
-					StrCat(sKeyValue, sizeof(sKeyValue), sName[1]);
-				}
-			}
-		}
-		StrCat(sKeyValue, sizeof(sKeyValue), "\"");
-		SetVariantString(sKeyValue);
-		AcceptEntityInput(client, "RunScriptCode");
-		SetVariantString("HUDSetLayout(g_STLib.Vars.HUD)");
-		AcceptEntityInput(client, "RunScriptCode");
-	}
+    if (g_RecClient[client] && !g_Menu_bRecPaused[client] && strlen(g_RecLine[client]) > 0)
+    {
+        if (g_RecFlags[client] && GetConVarBool(g_ConVar_AllowIDLE))
+        {
+            new String:sValue[BLOCK_COUNT][BLOCK_SIZE];
+            new block_count = ExplodeString(g_RecLine[client], ":", sValue, BLOCK_COUNT, BLOCK_SIZE);
+            Format(sValue[0], BLOCK_SIZE, "%d", g_RecFlags[client] |= StringToInt(sValue[0]));
+            if (g_RecFlags[client] & IN_TAKEOVER)
+            {
+                decl Float:fAngles[3];
+                GetClientEyeAngles(client, fAngles);
+                Format(sValue[1], BLOCK_SIZE, "%.03f", fAngles[0]);
+                Format(sValue[2], BLOCK_SIZE, "%.03f", fAngles[1]);
+            }
+            ImplodeStrings(sValue, block_count, ":", g_RecLine[client], BLOCKS_LEN);
+            g_RecFlags[client] = 0;
+        }
+        WriteFileLine(g_RecFile[client], g_RecLine[client]);
+    }
+    else if (g_bIsApplyPlayerAction[client])
+    {
+        if (GetConVarInt(g_ConVar_Debug) == client || g_Menu_eDebug[client] == 2)
+        {
+            static int _curTick[MAXCLIENTS + 1] = {-1, ...};
+            if (_curTick[client] != g_iTicks[client])
+            {
+                _curTick[client] = g_iTicks[client];
+                decl Float:fVel[3], Float:fVel2D[3], String:sFileData[BLOCK_SIZE], String:sValue[3][16], String:sDebugInfo[128];
+                new Float:fAngles[3], idx = g_Menu_Goto[client] ? g_iTicks[client] : g_iTicks[client] - 1, mask = GetArrayCell(g_hButtons[client], idx), item = GetArrayCell(g_hWeapons[client], idx);
+                new bool:exmode = GetConVarInt(g_ConVar_ExPlay) && !g_Menu_bLegacy[client] && GetArrayString(g_hOrigin[client], idx, sFileData, BLOCK_SIZE) > 0 && ExplodeString(sFileData, ",", sValue, 3, 16) == 3;
+                fAngles[0] = GetArrayCell(g_hAngles[client][0], idx);
+                fAngles[1] = GetArrayCell(g_hAngles[client][1], idx);
+                GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVel); fVel2D = fVel; fVel2D[2] = 0.0;
+                IntToString(GetEntProp(client, Prop_Send, "m_fFlags"), sDebugInfo, sizeof(sDebugInfo));
+                if (g_Menu_Goto[client] && GetArrayString(g_hFlags[client], idx, sFileData, BLOCK_SIZE) > 0) Format(sDebugInfo, sizeof(sDebugInfo), "%s:%d", sDebugInfo, StringToInt(sFileData));
+                Format(sDebugInfo, sizeof(sDebugInfo), "%d >> %d:%.03f:%.03f:%d%s | VEL: %.03f | UPS: %.03f | %s | %N | %s", idx + 4, mask, fAngles[0], fAngles[1], item, exmode ? ":EXMODE" : "", GetVectorLength(fVel), GetVectorLength(fVel2D), sDebugInfo, client, g_sFileName[client]);
+                if (GetConVarInt(g_ConVar_Debug) == client) PrintToServer(sDebugInfo);
+                else if (g_Menu_eDebug[client] == 2) PrintToConsole(client, sDebugInfo);
+            }
+        }
+    }
+    if (g_Menu_eDebug[client] == 1)
+    {
+        decl String:sKeyValue[256], Float:fVel[3], Float:fVel2D[3];
+        GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVel); fVel2D = fVel; fVel2D[2] = 0.0;
+        Format(sKeyValue, sizeof(sKeyValue), "g_STLib.Vars.HUD.Fields.debug.dataval = \"UPS:       %.03f\\nVEL:        %.03f\"", GetVectorLength(fVel2D), GetVectorLength(fVel));
+        SetVariantString(sKeyValue);
+        AcceptEntityInput(client, "RunScriptCode");
+        Format(sKeyValue, sizeof(sKeyValue), "g_STLib.Vars.HUD.Fields.debug.dataval += \"\\nLine:       ");
+        if (g_bIsApplyPlayerAction[client])
+        {
+            decl String:sTime[16], String:sFileData[BLOCK_SIZE];
+            new tick = g_Menu_Goto[client] ? g_iTicks[client] + 1: g_iTicks[client];
+            GetDisplayTime(sTime, sizeof(sTime), tick);
+            Format(sKeyValue, sizeof(sKeyValue), "%s%d / %d (%s)%s\"", sKeyValue, tick + 3, g_iTicksTotal[client] + 3, sTime, !GetArrayString(g_hOrigin[client], g_Menu_Goto[client] ? g_iTicks[client] : g_iTicks[client] - 1, sFileData, BLOCK_SIZE) || g_Menu_bLegacy[client] || !GetConVarInt(g_ConVar_ExPlay) ? " LEGACY" : "");
+        }
+        else StrCat(sKeyValue, sizeof(sKeyValue), "N/A\"");
+        SetVariantString(sKeyValue);
+        AcceptEntityInput(client, "RunScriptCode");
+        Format(sKeyValue, sizeof(sKeyValue), "g_STLib.Vars.HUD.Fields.debug.dataval += \"\\nFlags:      %d", GetEntProp(client, Prop_Send, "m_fFlags"));
+        if (g_bIsApplyPlayerAction[client] && g_Menu_Goto[client])
+        {
+            decl String:sFileData[8];
+            if (GetArrayString(g_hFlags[client], g_iTicks[client], sFileData, BLOCK_SIZE) > 0)
+            {
+                Format(sKeyValue, sizeof(sKeyValue), "%s:%d", sKeyValue, StringToInt(sFileData));
+            }
+        }
+        StrCat(sKeyValue, sizeof(sKeyValue), "\"");
+        SetVariantString(sKeyValue);
+        AcceptEntityInput(client, "RunScriptCode");
+        int mask;
+        if (g_bIsApplyPlayerAction[client]) mask = GetArrayCell(g_hButtons[client], g_Menu_Goto[client] ? g_iTicks[client] : g_iTicks[client] - 1);
+        else mask = GetClientButtons(client);
+        Format(sKeyValue, sizeof(sKeyValue), "g_STLib.Vars.HUD.Fields.debug2.dataval = \"\\n\\n\\n\\n\\nButtons:  %d", mask);
+        if (mask)
+        {
+            decl String:sName[2][16];
+            for (int i = 1; i <= 29; i++)
+            {
+                if (mask & StringToInt(g_Buttons[i]))
+                {
+                    ExplodeString(g_Buttons[i], ":", sName, 2, 16);
+                    StrCat(sKeyValue, sizeof(sKeyValue), sName[1]);
+                }
+            }
+        }
+        StrCat(sKeyValue, sizeof(sKeyValue), "\"");
+        SetVariantString(sKeyValue);
+        AcceptEntityInput(client, "RunScriptCode");
+        SetVariantString("HUDSetLayout(g_STLib.Vars.HUD)");
+        AcceptEntityInput(client, "RunScriptCode");
+    }
 }
 
 public Event_PlayerBotReplace(Event event, const char[] name, bool dontBroadcast)
 {
-	new client = GetClientOfUserId(GetEventInt(event, "player"));
-	if (g_RecClient[client]) g_RecFlags[client] |= StrEqual(name, "player_bot_replace") ? IN_IDLE : IN_TAKEOVER;
+    new client = GetClientOfUserId(GetEventInt(event, "player"));
+    if (g_RecClient[client]) g_RecFlags[client] |= StrEqual(name, "player_bot_replace") ? IN_IDLE : IN_TAKEOVER;
 }
 
 public Event_WeaponFire(Event event, const char[] name, bool dontBroadcast)
 {
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if (g_bIsApplyPlayerAction[client] && !g_bIsClientFired[client] && !IsFakeClient(client) && !g_Menu_Goto[client])
-	{
-		decl String:sWeapon[32];
-		GetEventString(event, "weapon", sWeapon, sizeof(sWeapon));
-		if (StrEqual(sWeapon, "pistol"))
-		{
-			new entity = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-			if (GetEntProp(entity, Prop_Send, "m_hasDualWeapons"))
-			{
-				if (GetEntProp(entity, Prop_Send, "m_iClip1")%2) ClientCommand(client, "playgamesound Pistol_Silver.Fire");
-				else ClientCommand(client, "playgamesound Pistol.DualFire");
-			}
-			else ClientCommand(client, "playgamesound Pistol.Fire");
-		}
-		else if (StrEqual(sWeapon, "pistol_magnum")) ClientCommand(client, "playgamesound Magnum.Fire");
-		//else if (StrEqual(sWeapon, "pumpshotgun")) ClientCommand(client, "playgamesound Shotgun.Fire");
-		//else if (StrEqual(sWeapon, "shotgun_chrome")) ClientCommand(client, "playgamesound Shotgun_Chrome.Fire");
-		//else if (StrEqual(sWeapon, "shotgun_spas")) ClientCommand(client, "playgamesound AutoShotgun_Spas.Fire");
-		//else if (StrEqual(sWeapon, "autoshotgun")) ClientCommand(client, "playgamesound AutoShotgun.Fire");
-		else if (StrEqual(sWeapon, "grenade_launcher")) ClientCommand(client, "playgamesound GrenadeLauncher.Fire");
-		else if (StrEqual(sWeapon, "smg")) ClientCommand(client, "playgamesound SMG.Fire");
-		else if (StrEqual(sWeapon, "smg_silenced")) ClientCommand(client, "playgamesound SMG_Silenced.Fire");
-		else if (StrEqual(sWeapon, "rifle")) ClientCommand(client, "playgamesound Rifle.Fire");
-		else if (StrEqual(sWeapon, "rifle_ak47")) ClientCommand(client, "playgamesound AK47.Fire");
-		else if (StrEqual(sWeapon, "rifle_desert")) ClientCommand(client, "playgamesound Rifle_Desert.Fire");
-		else if (StrEqual(sWeapon, "rifle_m60")) ClientCommand(client, "playgamesound M60.Fire");
-		else if (StrEqual(sWeapon, "hunting_rifle")) ClientCommand(client, "playgamesound HuntingRifle.Fire");
-		else if (StrEqual(sWeapon, "sniper_military")) ClientCommand(client, "playgamesound Sniper_Military.Fire");
-		else if (StrEqual(sWeapon, "melee")) ClientCommand(client, "playgamesound Melee.Miss");
-	}
+    new client = GetClientOfUserId(GetEventInt(event, "userid"));
+    if (g_bIsApplyPlayerAction[client] && !g_bIsClientFired[client] && !IsFakeClient(client) && !g_Menu_Goto[client])
+    {
+        decl String:sWeapon[32];
+        GetEventString(event, "weapon", sWeapon, sizeof(sWeapon));
+        if (StrEqual(sWeapon, "pistol"))
+        {
+            new entity = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+            if (GetEntProp(entity, Prop_Send, "m_hasDualWeapons"))
+            {
+                if (GetEntProp(entity, Prop_Send, "m_iClip1")%2) ClientCommand(client, "playgamesound Pistol_Silver.Fire");
+                else ClientCommand(client, "playgamesound Pistol.DualFire");
+            }
+            else ClientCommand(client, "playgamesound Pistol.Fire");
+        }
+        else if (StrEqual(sWeapon, "pistol_magnum")) ClientCommand(client, "playgamesound Magnum.Fire");
+        //else if (StrEqual(sWeapon, "pumpshotgun")) ClientCommand(client, "playgamesound Shotgun.Fire");
+        //else if (StrEqual(sWeapon, "shotgun_chrome")) ClientCommand(client, "playgamesound Shotgun_Chrome.Fire");
+        //else if (StrEqual(sWeapon, "shotgun_spas")) ClientCommand(client, "playgamesound AutoShotgun_Spas.Fire");
+        //else if (StrEqual(sWeapon, "autoshotgun")) ClientCommand(client, "playgamesound AutoShotgun.Fire");
+        else if (StrEqual(sWeapon, "grenade_launcher")) ClientCommand(client, "playgamesound GrenadeLauncher.Fire");
+        else if (StrEqual(sWeapon, "smg")) ClientCommand(client, "playgamesound SMG.Fire");
+        else if (StrEqual(sWeapon, "smg_silenced")) ClientCommand(client, "playgamesound SMG_Silenced.Fire");
+        else if (StrEqual(sWeapon, "rifle")) ClientCommand(client, "playgamesound Rifle.Fire");
+        else if (StrEqual(sWeapon, "rifle_ak47")) ClientCommand(client, "playgamesound AK47.Fire");
+        else if (StrEqual(sWeapon, "rifle_desert")) ClientCommand(client, "playgamesound Rifle_Desert.Fire");
+        else if (StrEqual(sWeapon, "rifle_m60")) ClientCommand(client, "playgamesound M60.Fire");
+        else if (StrEqual(sWeapon, "hunting_rifle")) ClientCommand(client, "playgamesound HuntingRifle.Fire");
+        else if (StrEqual(sWeapon, "sniper_military")) ClientCommand(client, "playgamesound Sniper_Military.Fire");
+        else if (StrEqual(sWeapon, "melee")) ClientCommand(client, "playgamesound Melee.Miss");
+    }
 }
 
 //========================================================================================================================
@@ -855,93 +948,96 @@ public Event_WeaponFire(Event event, const char[] name, bool dontBroadcast)
 
 stock ForceStop(client = 0)
 {
-	for (int i = client ? client : 1; i <= (client ? client : MaxClients); i++)
-	{
-		if (g_RecClient[i])
-		{
-			PrintToServer("[SM] Movement \"%s\" has been created (by %N). Recording time: %.03f, game frames: %d.", g_sFileName[i], i, GetGameTime() - g_RecTime[i] + GetGameFrameTime(), GetGameTickCount() - g_RecFrames[i] + 1);
-			g_RecClient[i] = false;
-			CloseHandle(g_RecFile[i]);
-		}
-		else g_bIsApplyPlayerAction[i] = false;
-		if (g_Menu_Goto[i] || g_Menu_bDelay[i])
-		{
-			g_Menu_Goto[i] = false;
-			g_Menu_bDelay[i] = false;
-			g_Menu_FastSplit[i] = false;
-			if (IsClientInGame(i) && GetEntityMoveType(i) == MOVETYPE_NONE) SetEntityMoveType(i, MOVETYPE_WALK);
-		}
-		if (g_Menu_Active[i]) ShowMenu(i);
-	}
-	RevokeHostInputs();
+    for (int i = client ? client : 1; i <= (client ? client : MaxClients); i++)
+    {
+        if (g_RecClient[i])
+        {
+            PrintToServer("[SM] Movement \"%s\" has been created (by %N). Recording time: %.03f, game frames: %d.", g_sFileName[i], i, GetGameTime() - g_RecTime[i] + GetGameFrameTime(), GetGameTickCount() - g_RecFrames[i] + 1);
+            g_RecClient[i] = false;
+            g_Menu_bRecPaused[i] = false;
+            g_iRecRewindFrame[i] = 0;
+            g_iRecRewindSpeed[i] = 1;
+            CloseHandle(g_RecFile[i]);
+        }
+        else g_bIsApplyPlayerAction[i] = false;
+        if (g_Menu_Goto[i] || g_Menu_bDelay[i])
+        {
+            g_Menu_Goto[i] = false;
+            g_Menu_bDelay[i] = false;
+            g_Menu_FastSplit[i] = false;
+            if (IsClientInGame(i) && GetEntityMoveType(i) == MOVETYPE_NONE) SetEntityMoveType(i, MOVETYPE_WALK);
+        }
+        if (g_Menu_Active[i]) ShowMenu(i);
+    }
+    RevokeHostInputs();
 }
 
 stock RevokeHostInputs(dont_check_cvar = false)
 {
-	if ((dont_check_cvar || GetConVarBool(g_ConVar_AllowHostInputs)) && !IsDedicatedServer())
-	{
-		ServerCommand("-attack");
-		ServerCommand("-duck");
-	}
+    if ((dont_check_cvar || GetConVarBool(g_ConVar_AllowHostInputs)) && !IsDedicatedServer())
+    {
+        ServerCommand("-attack");
+        ServerCommand("-duck");
+    }
 }
 
 public ConVarChanged_RevokeHostInputs(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	if (!StringToInt(newValue))
-	{
-		RevokeHostInputs(true);
-	}
+    if (!StringToInt(newValue))
+    {
+        RevokeHostInputs(true);
+    }
 }
 
 public OnMapEnd()
 {
-	ForceStop();
+    ForceStop();
 }
 
 public OnPluginEnd()
 {
-	if (g_Menu_eDebug[1] == 1)
-	{
-		SetVariantString("if (!(\"g_ST\" in getroottable())) ::g_STLib <- {Vars = {HUD = {Fields = {}}}}");
-		AcceptEntityInput(0, "RunScriptCode");
-		SetVariantString("if (\"debug\" in g_STLib.Vars.HUD.Fields) {g_STLib.Vars.HUD.Fields.debug.dataval = \"\"; g_STLib.Vars.HUD.Fields.debug2.dataval = \"\"}");
-		AcceptEntityInput(0, "RunScriptCode");
-		SetVariantString("HUDSetLayout(g_STLib.Vars.HUD)");
-		AcceptEntityInput(0, "RunScriptCode");
-	}
+    if (g_Menu_eDebug[1] == 1)
+    {
+        SetVariantString("if (!(\"g_ST\" in getroottable())) ::g_STLib <- {Vars = {HUD = {Fields = {}}}}");
+        AcceptEntityInput(0, "RunScriptCode");
+        SetVariantString("if (\"debug\" in g_STLib.Vars.HUD.Fields) {g_STLib.Vars.HUD.Fields.debug.dataval = \"\"; g_STLib.Vars.HUD.Fields.debug2.dataval = \"\"}");
+        AcceptEntityInput(0, "RunScriptCode");
+        SetVariantString("HUDSetLayout(g_STLib.Vars.HUD)");
+        AcceptEntityInput(0, "RunScriptCode");
+    }
 }
 
 public Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
-	if (g_Menu_eDebug[1] == 1)
-	{
-		SetVariantString("if (!(\"g_ST\" in getroottable())) ::g_STLib <- {Vars = {HUD = {Fields = {}}}}");
-		AcceptEntityInput(0, "RunScriptCode");
-		SetVariantString("::g_STLib.Vars.HUD.Fields.debug <- {slot = g_MapScript.HUD_MID_BOX, dataval = \"\", flags = g_MapScript.HUD_FLAG_NOBG | g_MapScript.HUD_FLAG_ALIGN_LEFT}; HUDPlace(g_MapScript.HUD_MID_BOX, 0.43, 0.42, 0.5, 0.3);");
-		AcceptEntityInput(0, "RunScriptCode");
-		SetVariantString("::g_STLib.Vars.HUD.Fields.debug2 <- {slot = g_MapScript.HUD_FAR_LEFT, dataval = \"\", flags = g_MapScript.HUD_FLAG_NOBG}; HUDPlace(g_MapScript.HUD_FAR_LEFT, 0.43, 0.42, 0.5, 0.3);");
-		AcceptEntityInput(0, "RunScriptCode");
-		SetVariantString("NetProps.SetPropInt(self, \"m_bChallengeModeActive\", 1)");
-		AcceptEntityInput(FindEntityByClassname(-1, "terror_gamerules"), "RunScriptCode");
-	}
+    if (g_Menu_eDebug[1] == 1)
+    {
+        SetVariantString("if (!(\"g_ST\" in getroottable())) ::g_STLib <- {Vars = {HUD = {Fields = {}}}}");
+        AcceptEntityInput(0, "RunScriptCode");
+        SetVariantString("::g_STLib.Vars.HUD.Fields.debug <- {slot = g_MapScript.HUD_MID_BOX, dataval = \"\", flags = g_MapScript.HUD_FLAG_NOBG | g_MapScript.HUD_FLAG_ALIGN_LEFT}; HUDPlace(g_MapScript.HUD_MID_BOX, 0.43, 0.42, 0.5, 0.3);");
+        AcceptEntityInput(0, "RunScriptCode");
+        SetVariantString("::g_STLib.Vars.HUD.Fields.debug2 <- {slot = g_MapScript.HUD_FAR_LEFT, dataval = \"\", flags = g_MapScript.HUD_FLAG_NOBG}; HUDPlace(g_MapScript.HUD_FAR_LEFT, 0.43, 0.42, 0.5, 0.3);");
+        AcceptEntityInput(0, "RunScriptCode");
+        SetVariantString("NetProps.SetPropInt(self, \"m_bChallengeModeActive\", 1)");
+        AcceptEntityInput(FindEntityByClassname(-1, "terror_gamerules"), "RunScriptCode");
+    }
 }
 
 public Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
-	ForceStop();
+    ForceStop();
 }
 
 public OnClientDisconnect(int client)
 {
-	ForceStop(client);
+    ForceStop(client);
 }
 
 public Action:Cmd_Stop(client, args)
 {
-	decl String:sArg[4];
-	GetCmdArg(1, sArg, sizeof(sArg));
-	ForceStop(StringToInt(sArg));
-	return Plugin_Handled;
+    decl String:sArg[4];
+    GetCmdArg(1, sArg, sizeof(sArg));
+    ForceStop(StringToInt(sArg));
+    return Plugin_Handled;
 }
 
 //============================================================
@@ -949,16 +1045,16 @@ public Action:Cmd_Stop(client, args)
 
 public Action:Cmd_GetFrame(client, args)
 {
-	if (args > 0)
-	{
-		decl String:sArg[4];
-		GetCmdArg(1, sArg, sizeof(sArg));
-		client = StringToInt(sArg);
-	}
-	else if (!client) client = 1;
-	if (client <= 0 || client > MaxClients || !g_bIsApplyPlayerAction[client]) return Plugin_Handled;
-	PrintToServer("[SM] %N's playback \"%s\" line: %d", client, g_sFileName[client], g_Menu_Goto[client] ? g_iTicks[client] + 4 : g_iTicks[client] + 3);
-	return Plugin_Handled;
+    if (args > 0)
+    {
+        decl String:sArg[4];
+        GetCmdArg(1, sArg, sizeof(sArg));
+        client = StringToInt(sArg);
+    }
+    else if (!client) client = 1;
+    if (client <= 0 || client > MaxClients || !g_bIsApplyPlayerAction[client]) return Plugin_Handled;
+    PrintToServer("[SM] %N's playback \"%s\" line: %d", client, g_sFileName[client], g_Menu_Goto[client] ? g_iTicks[client] + 4 : g_iTicks[client] + 3);
+    return Plugin_Handled;
 }
 
 //============================================================
@@ -966,50 +1062,50 @@ public Action:Cmd_GetFrame(client, args)
 
 public Action:Cmd_Goto(client, args)
 {
-	decl String:sArg[8], String:sArg2[64], String:sArg3[4];
-	GetCmdArg(1, sArg, sizeof(sArg));
-	GetCmdArg(2, sArg2, sizeof(sArg2));
-	GetCmdArg(3, sArg3, sizeof(sArg3));
-	if (strlen(sArg3)) client = Clamp(StringToInt(sArg3), 0, MAXCLIENTS);
-	if (client == 0 && !IsClientInGame((client = 1))) return Plugin_Handled;
-	if (g_Menu_bDelay[client]) return Plugin_Handled;
-	if (!g_bIsApplyPlayerAction[client] && !strlen(sArg2) && strlen(g_sGotoPrevFile[client])) sArg2 = g_sGotoPrevFile[client];
-	if (!g_bIsApplyPlayerAction[client] || strlen(sArg2))
-	{
-		if (!strlen(sArg2) || StrEqual(sArg2, "default")) Format(sArg2, sizeof(sArg2), client > 1 && GetConVarBool(g_ConVar_FFA) ? "default_%d" : "default", client);
-		if (!g_bIsApplyPlayerAction[client] || !StrEqual(sArg2, g_sFileName[client]))
-		{
-			ForceStop(client);
-			SetConVarString(g_ConVar_ForceFile, sArg2);
-			SetConVarInt(g_ConVar_Play, client);
-		}
-	}
-	if (!g_iTicksTotal[client]) return Plugin_Handled;
+    decl String:sArg[8], String:sArg2[64], String:sArg3[4];
+    GetCmdArg(1, sArg, sizeof(sArg));
+    GetCmdArg(2, sArg2, sizeof(sArg2));
+    GetCmdArg(3, sArg3, sizeof(sArg3));
+    if (strlen(sArg3)) client = Clamp(StringToInt(sArg3), 0, MAXCLIENTS);
+    if (client == 0 && !IsClientInGame((client = 1))) return Plugin_Handled;
+    if (g_Menu_bDelay[client]) return Plugin_Handled;
+    if (!g_bIsApplyPlayerAction[client] && !strlen(sArg2) && strlen(g_sGotoPrevFile[client])) sArg2 = g_sGotoPrevFile[client];
+    if (!g_bIsApplyPlayerAction[client] || strlen(sArg2))
+    {
+        if (!strlen(sArg2) || StrEqual(sArg2, "default")) Format(sArg2, sizeof(sArg2), client > 1 && GetConVarBool(g_ConVar_FFA) ? "default_%d" : "default", client);
+        if (!g_bIsApplyPlayerAction[client] || !StrEqual(sArg2, g_sFileName[client]))
+        {
+            ForceStop(client);
+            SetConVarString(g_ConVar_ForceFile, sArg2);
+            SetConVarInt(g_ConVar_Play, client);
+        }
+    }
+    if (!g_iTicksTotal[client]) return Plugin_Handled;
 
-	args = Clamp(StringToInt(sArg) - 4, 0, g_iTicksTotal[client] - 1);
-	
-	if (g_Menu_Active[client])
-	{
-		if (g_bIsApplyPlayerAction[client] && !g_Menu_Goto[client])
-		{
-			SetEntityMoveType(client, MOVETYPE_NONE);
-			if (!g_Menu_GotoUsage[client])
-			{
-				PrintHintText(client, "Press and hold [A] or [D] strafes to rewind or fast-forward.");
-				g_Menu_Goto_iWarnMsg[client] = -1;
-			}
-			else g_Menu_Goto_iWarnMsg[client] = GetGameTickCount();
-			ClientCommand(client, "playgamesound buttons/blip1.wav");
-			if (client == 1) SetConVarFloat(FindConVar("host_timescale"), 1.0);
-			g_Menu_Goto[client] = true;
-			g_Menu_GotoUsage[client] = true;
-		}
-		g_Menu_iGotoTicks[client] = args;
-		ShowMenu(client);
-	}
-	g_iTicks[client] = args;
-	g_sGotoPrevFile[client] = g_sFileName[client];
-	return Plugin_Handled;
+    args = Clamp(StringToInt(sArg) - 4, 0, g_iTicksTotal[client] - 1);
+    
+    if (g_Menu_Active[client])
+    {
+        if (g_bIsApplyPlayerAction[client] && !g_Menu_Goto[client])
+        {
+            SetEntityMoveType(client, MOVETYPE_NONE);
+            if (!g_Menu_GotoUsage[client])
+            {
+                PrintHintText(client, "Press and hold [A] or [D] strafes to rewind or fast-forward.");
+                g_Menu_Goto_iWarnMsg[client] = -1;
+            }
+            else g_Menu_Goto_iWarnMsg[client] = GetGameTickCount();
+            ClientCommand(client, "playgamesound buttons/blip1.wav");
+            if (client == 1) SetConVarFloat(FindConVar("host_timescale"), 1.0);
+            g_Menu_Goto[client] = true;
+            g_Menu_GotoUsage[client] = true;
+        }
+        g_Menu_iGotoTicks[client] = args;
+        ShowMenu(client);
+    }
+    g_iTicks[client] = args;
+    g_sGotoPrevFile[client] = g_sFileName[client];
+    return Plugin_Handled;
 }
 
 //============================================================
@@ -1017,154 +1113,154 @@ public Action:Cmd_Goto(client, args)
 
 public Action:Cmd_Tracker(client, args)
 {
-	if (client == 0 && !IsClientInGame((client = 1))) return Plugin_Handled;
-	static bool _canSound;
-	static int _id, _ofs;
-	static float _vec[3];
-	static ArrayList _timesList;
-	if (!_timesList) _timesList = new ArrayList(4);
-	decl String:sArg[64];
-	GetCmdArg(0, sArg, sizeof(sArg));
-	if (StrEqual(sArg, "st_mr_tracker_clear"))
-	{
-		SetVariantString("DebugDrawClear()");
-		AcceptEntityInput(client, "RunScriptCode");
-		if (_canSound)
-		{
-			_canSound = false;
-			_id = _ofs = 0;
-			_vec = NULL_VECTOR;
-			_timesList.Clear();
-			ClientCommand(client, "playgamesound Buttons.snd10");
-		}
-		return Plugin_Handled;
-	}
-	if (g_RecClient[client]) ForceStop(client);
-	GetCmdArg(1, sArg, sizeof(sArg));
-	if (!strlen(sArg))
-	{
-		if (g_Menu_Active[client]) GetConVarString(g_ConVar_ForceFile, sArg, sizeof(sArg));
-		if (g_bIsApplyPlayerAction[client]) sArg = g_sFileName[client];
-	}
-	if (!strlen(sArg) || StrEqual(sArg, "default")) Format(sArg, sizeof(sArg), client > 1 && GetConVarBool(g_ConVar_FFA) ? "default_%d" : "default", client);
-	decl String:sFilePath[128];
-	BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, sArg);
-	if (FileExists(sFilePath))
-	{
-		new Handle:hFile = OpenFile(sFilePath, "r"), String:sValue[5][BLOCK_SIZE], String:sValuePrev[BLOCK_SIZE], bool:toggle, count, bool:delimiters, bool:once;
-		decl String:sFileLine[BLOCKS_LEN], String:sKeyValue[256], Float:vecOrigin[3], Float:vecAng[3];
-		int timestamp = GetFileTime(sFilePath, FileTime_LastChange);
-		for (count = 0; count < 3; count++)
-		{
-			ReadFileLine(hFile, sFileLine, sizeof(sFileLine));
-			ExplodeString(sFileLine, ":", sValue, 4, 16);
-			if (StrEqual(sValue[0], "Origin"))
-			{
-				vecOrigin[0] = StringToFloat(sValue[1]);
-				vecOrigin[1] = StringToFloat(sValue[2]);
-				vecOrigin[2] = StringToFloat(sValue[3]);
-			}
-		}
-		if (client == 1)
-		{
-			decl String:sTimeStamp[16];
-			IntToString(timestamp, sTimeStamp, sizeof(sTimeStamp));
-			if (_timesList.FindString(sTimeStamp) == -1)
-			{
-				_timesList.PushString(sTimeStamp);
-				decl Float:vecDelta[3];
-				SubtractVectors(_vec, vecOrigin, vecDelta);
-				_vec = vecOrigin;
-				if (GetVectorLength(vecDelta) < 10) _ofs += 5;
-				else _ofs = 0;
-				_canSound = true;
-				once = true;
-				_id++;
-				RequestFrame(RF_LockAngle, GetConVarInt(g_ConVar_AllowFreeAngle));
-				SetConVarFlags(g_ConVar_AllowFreeAngle, 0);
-				SetConVarInt(g_ConVar_AllowFreeAngle, 1);
-				GetClientEyePosition(client, vecAng);
-				SubtractVectors(vecOrigin, vecAng, vecAng);
-				GetVectorAngles(vecAng, vecAng);
-				TeleportEntity(client, NULL_VECTOR, vecAng, NULL_VECTOR);
-			}
-			vecOrigin[0] += _ofs;
-		}
-		while (!IsEndOfFile(hFile) && ReadFileLine(hFile, sFileLine, sizeof(sFileLine)))
-		{
-			count++;
-			if (client > 1) continue;
-			ExplodeString(sFileLine, ":", sValue, 5, BLOCK_SIZE);
-			if (!strlen(sValue[4])) continue;
-			if (!strlen(sValuePrev))
-			{
-				sValuePrev = sValue[4];
-				continue;
-			}
-			Format(sKeyValue, sizeof(sKeyValue), "DebugDrawLine(Vector(%s), Vector(%s), %s, false, 1e4)", sValuePrev, sValue[4], toggle ? "255, 255, 0" : "0, 0, 255");
-			SetVariantString(sKeyValue);
-			AcceptEntityInput(client, "RunScriptCode");
-			delimiters = false;
-			if (GetConVarInt(g_ConVar_TrackerText) == 2 && !(count%10))
-			{
-				delimiters = true;
-				char sData[8];
-				if (!(count%30)) Format(sData, sizeof(sData), " (#%d)", _id);
-				Format(sKeyValue, sizeof(sKeyValue), "DebugDrawText(Vector(%s), \" - %d%s\", false, 1e4)", sValue[4], count, sData);
-				SetVariantString(sKeyValue);
-				AcceptEntityInput(client, "RunScriptCode");
-			}
-			sValuePrev = sValue[4];
-			sValue[4][0] = 0;
-			toggle = !toggle;
-		}
-		delete hFile;
-		
-		decl String:sTime[16], String:sFileData[32];
-		GetDisplayTime(sTime, sizeof(sTime), count - 3);
-		if (client > 1 || once)
-		{
-			FormatTime(sFileData, sizeof(sFileData), "%d %B, %Y @ %H:%M:%S", timestamp);
-			PrintToConsole(client, "Movement Info");
-			if (client == 1) PrintToConsole(client, "\tID\t\t: #%d", _id);
-			PrintToConsole(client, "\tName\t\t: %s", sArg);
-			PrintToConsole(client, "\tDuration\t: %s (%.03f)", sTime, GetGameFrameTime()*(count - 3));
-			PrintToConsole(client, "\tFrames\t\t: %d", count - 3);
-			PrintToConsole(client, "\tLines\t\t: %d", count);
-			PrintToConsole(client, "\tFile path\t: %s", sFilePath);
-			PrintToConsole(client, "\tSize\t\t: %.03f KB", FileSize(sFilePath)/1000.0);
-			PrintToConsole(client, "\tTimestamp\t: %s", sFileData);
-			PrintToConsole(client, "------------------------");
-		}
-		if (client == 1 && GetConVarBool(g_ConVar_TrackerText))
-		{
-			if (once)
-			{
-				Format(sKeyValue, sizeof(sKeyValue), "DebugDrawText(Vector(%.01f, %.01f, %.01f), \" <----\\n   ID: #%d\\n   Replay: %s\\n   Duration: %s (%.03f / %d)\\n   Lines: %d\", false, 1e4)", vecOrigin[0], vecOrigin[1], vecOrigin[2], _id, sArg, sTime, GetGameFrameTime()*(count - 3), count - 3, count);
-				SetVariantString(sKeyValue);
-				AcceptEntityInput(client, "RunScriptCode");
-			}
-			if (count > 4)
-			{
-				Format(sKeyValue, sizeof(sKeyValue), "DebugDrawText(Vector(%s), \"%sID: #%d - %.03f\\n**end**\", false, 1e4)", sValuePrev, delimiters ? "\\n" : "", _id, GetGameFrameTime()*(count - 3));
-				SetVariantString(sKeyValue);
-				AcceptEntityInput(client, "RunScriptCode");
-			}
-		}
-		ClientCommand(client, "playgamesound buttons/blip1.wav");
-	}
-	else
-	{
-		PrintToServer("[SM] ERROR: File \"%s\" does not exist!", sFilePath);
-		ClientCommand(client, "playgamesound buttons/button11.wav");
-	}
-	return Plugin_Handled;
+    if (client == 0 && !IsClientInGame((client = 1))) return Plugin_Handled;
+    static bool _canSound;
+    static int _id, _ofs;
+    static float _vec[3];
+    static ArrayList _timesList;
+    if (!_timesList) _timesList = new ArrayList(4);
+    decl String:sArg[64];
+    GetCmdArg(0, sArg, sizeof(sArg));
+    if (StrEqual(sArg, "st_mr_tracker_clear"))
+    {
+        SetVariantString("DebugDrawClear()");
+        AcceptEntityInput(client, "RunScriptCode");
+        if (_canSound)
+        {
+            _canSound = false;
+            _id = _ofs = 0;
+            _vec = NULL_VECTOR;
+            _timesList.Clear();
+            ClientCommand(client, "playgamesound Buttons.snd10");
+        }
+        return Plugin_Handled;
+    }
+    if (g_RecClient[client]) ForceStop(client);
+    GetCmdArg(1, sArg, sizeof(sArg));
+    if (!strlen(sArg))
+    {
+        if (g_Menu_Active[client]) GetConVarString(g_ConVar_ForceFile, sArg, sizeof(sArg));
+        if (g_bIsApplyPlayerAction[client]) sArg = g_sFileName[client];
+    }
+    if (!strlen(sArg) || StrEqual(sArg, "default")) Format(sArg, sizeof(sArg), client > 1 && GetConVarBool(g_ConVar_FFA) ? "default_%d" : "default", client);
+    decl String:sFilePath[128];
+    BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, sArg);
+    if (FileExists(sFilePath))
+    {
+        new Handle:hFile = OpenFile(sFilePath, "r"), String:sValue[5][BLOCK_SIZE], String:sValuePrev[BLOCK_SIZE], bool:toggle, count, bool:delimiters, bool:once;
+        decl String:sFileLine[BLOCKS_LEN], String:sKeyValue[256], Float:vecOrigin[3], Float:vecAng[3];
+        int timestamp = GetFileTime(sFilePath, FileTime_LastChange);
+        for (count = 0; count < 3; count++)
+        {
+            ReadFileLine(hFile, sFileLine, sizeof(sFileLine));
+            ExplodeString(sFileLine, ":", sValue, 4, 16);
+            if (StrEqual(sValue[0], "Origin"))
+            {
+                vecOrigin[0] = StringToFloat(sValue[1]);
+                vecOrigin[1] = StringToFloat(sValue[2]);
+                vecOrigin[2] = StringToFloat(sValue[3]);
+            }
+        }
+        if (client == 1)
+        {
+            decl String:sTimeStamp[16];
+            IntToString(timestamp, sTimeStamp, sizeof(sTimeStamp));
+            if (_timesList.FindString(sTimeStamp) == -1)
+            {
+                _timesList.PushString(sTimeStamp);
+                decl Float:vecDelta[3];
+                SubtractVectors(_vec, vecOrigin, vecDelta);
+                _vec = vecOrigin;
+                if (GetVectorLength(vecDelta) < 10) _ofs += 5;
+                else _ofs = 0;
+                _canSound = true;
+                once = true;
+                _id++;
+                RequestFrame(RF_LockAngle, GetConVarInt(g_ConVar_AllowFreeAngle));
+                SetConVarFlags(g_ConVar_AllowFreeAngle, 0);
+                SetConVarInt(g_ConVar_AllowFreeAngle, 1);
+                GetClientEyePosition(client, vecAng);
+                SubtractVectors(vecOrigin, vecAng, vecAng);
+                GetVectorAngles(vecAng, vecAng);
+                TeleportEntity(client, NULL_VECTOR, vecAng, NULL_VECTOR);
+            }
+            vecOrigin[0] += _ofs;
+        }
+        while (!IsEndOfFile(hFile) && ReadFileLine(hFile, sFileLine, sizeof(sFileLine)))
+        {
+            count++;
+            if (client > 1) continue;
+            ExplodeString(sFileLine, ":", sValue, 5, BLOCK_SIZE);
+            if (!strlen(sValue[4])) continue;
+            if (!strlen(sValuePrev))
+            {
+                sValuePrev = sValue[4];
+                continue;
+            }
+            Format(sKeyValue, sizeof(sKeyValue), "DebugDrawLine(Vector(%s), Vector(%s), %s, false, 1e4)", sValuePrev, sValue[4], toggle ? "255, 255, 0" : "0, 0, 255");
+            SetVariantString(sKeyValue);
+            AcceptEntityInput(client, "RunScriptCode");
+            delimiters = false;
+            if (GetConVarInt(g_ConVar_TrackerText) == 2 && !(count%10))
+            {
+                delimiters = true;
+                char sData[8];
+                if (!(count%30)) Format(sData, sizeof(sData), " (#%d)", _id);
+                Format(sKeyValue, sizeof(sKeyValue), "DebugDrawText(Vector(%s), \" - %d%s\", false, 1e4)", sValue[4], count, sData);
+                SetVariantString(sKeyValue);
+                AcceptEntityInput(client, "RunScriptCode");
+            }
+            sValuePrev = sValue[4];
+            sValue[4][0] = 0;
+            toggle = !toggle;
+        }
+        delete hFile;
+        
+        decl String:sTime[16], String:sFileData[32];
+        GetDisplayTime(sTime, sizeof(sTime), count - 3);
+        if (client > 1 || once)
+        {
+            FormatTime(sFileData, sizeof(sFileData), "%d %B, %Y @ %H:%M:%S", timestamp);
+            PrintToConsole(client, "Movement Info");
+            if (client == 1) PrintToConsole(client, "\tID\t\t: #%d", _id);
+            PrintToConsole(client, "\tName\t\t: %s", sArg);
+            PrintToConsole(client, "\tDuration\t: %s (%.03f)", sTime, GetGameFrameTime()*(count - 3));
+            PrintToConsole(client, "\tFrames\t\t: %d", count - 3);
+            PrintToConsole(client, "\tLines\t\t: %d", count);
+            PrintToConsole(client, "\tFile path\t: %s", sFilePath);
+            PrintToConsole(client, "\tSize\t\t: %.03f KB", FileSize(sFilePath)/1000.0);
+            PrintToConsole(client, "\tTimestamp\t: %s", sFileData);
+            PrintToConsole(client, "------------------------");
+        }
+        if (client == 1 && GetConVarBool(g_ConVar_TrackerText))
+        {
+            if (once)
+            {
+                Format(sKeyValue, sizeof(sKeyValue), "DebugDrawText(Vector(%.01f, %.01f, %.01f), \" <----\\n   ID: #%d\\n   Replay: %s\\n   Duration: %s (%.03f / %d)\\n   Lines: %d\", false, 1e4)", vecOrigin[0], vecOrigin[1], vecOrigin[2], _id, sArg, sTime, GetGameFrameTime()*(count - 3), count - 3, count);
+                SetVariantString(sKeyValue);
+                AcceptEntityInput(client, "RunScriptCode");
+            }
+            if (count > 4)
+            {
+                Format(sKeyValue, sizeof(sKeyValue), "DebugDrawText(Vector(%s), \"%sID: #%d - %.03f\\n**end**\", false, 1e4)", sValuePrev, delimiters ? "\\n" : "", _id, GetGameFrameTime()*(count - 3));
+                SetVariantString(sKeyValue);
+                AcceptEntityInput(client, "RunScriptCode");
+            }
+        }
+        ClientCommand(client, "playgamesound buttons/blip1.wav");
+    }
+    else
+    {
+        PrintToServer("[SM] ERROR: File \"%s\" does not exist!", sFilePath);
+        ClientCommand(client, "playgamesound buttons/button11.wav");
+    }
+    return Plugin_Handled;
 }
 
 public RF_LockAngle(any:data)
 {
-	SetConVarInt(g_ConVar_AllowFreeAngle, data);
-	SetConVarFlags(g_ConVar_AllowFreeAngle, FCVAR_NOTIFY);
+    SetConVarInt(g_ConVar_AllowFreeAngle, data);
+    SetConVarFlags(g_ConVar_AllowFreeAngle, FCVAR_NOTIFY);
 }
 
 //============================================================
@@ -1172,34 +1268,34 @@ public RF_LockAngle(any:data)
 
 public Action:Cmd_Save(client, args)
 {
-	if (client == 0 && !IsClientInGame((client = 1))) return Plugin_Handled;
-	if (g_RecClient[client]) ForceStop(client);
-	decl String:sFilePath[128];
-	Format(sFilePath, sizeof(sFilePath), client > 1 && GetConVarBool(g_ConVar_FFA) ? "default_%d" : "default", client);
-	BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, sFilePath);
-	if (FileExists(sFilePath))
-	{
-		decl String:sCopyPath[128];
-		Format(sCopyPath, sizeof(sCopyPath), client > 1 && GetConVarBool(g_ConVar_FFA) ? "quicksave_%d" : "quicksave", client);
-		BuildPath(Path_SM, sCopyPath, sizeof(sCopyPath), "%s/%s.txt", MR_DIR, sCopyPath);
-		new Handle:hFile = OpenFile(sFilePath, "rb");
-		new Handle:hCopy = OpenFile(sCopyPath, "wb");
-		if (hCopy != INVALID_HANDLE)
-		{
-			decl buffer[128];
-			while (!IsEndOfFile(hFile)) WriteFile(hCopy, buffer, ReadFile(hFile, buffer, sizeof(buffer), 2), 2);
-			PrintToServer("[SM] Quick save by %N", client);
-			ClientCommand(client, "playgamesound Buttons.snd4");
-			delete hCopy;
-		}
-		delete hFile;
-	}
-	else
-	{
-		PrintToChat(client, "[SM] Nothing to save!");
-		ClientCommand(client, "playgamesound buttons/button11.wav");
-	}
-	return Plugin_Handled;
+    if (client == 0 && !IsClientInGame((client = 1))) return Plugin_Handled;
+    if (g_RecClient[client]) ForceStop(client);
+    decl String:sFilePath[128];
+    Format(sFilePath, sizeof(sFilePath), client > 1 && GetConVarBool(g_ConVar_FFA) ? "default_%d" : "default", client);
+    BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, sFilePath);
+    if (FileExists(sFilePath))
+    {
+        decl String:sCopyPath[128];
+        Format(sCopyPath, sizeof(sCopyPath), client > 1 && GetConVarBool(g_ConVar_FFA) ? "quicksave_%d" : "quicksave", client);
+        BuildPath(Path_SM, sCopyPath, sizeof(sCopyPath), "%s/%s.txt", MR_DIR, sCopyPath);
+        new Handle:hFile = OpenFile(sFilePath, "rb");
+        new Handle:hCopy = OpenFile(sCopyPath, "wb");
+        if (hCopy != INVALID_HANDLE)
+        {
+            decl buffer[128];
+            while (!IsEndOfFile(hFile)) WriteFile(hCopy, buffer, ReadFile(hFile, buffer, sizeof(buffer), 2), 2);
+            PrintToServer("[SM] Quick save by %N", client);
+            ClientCommand(client, "playgamesound Buttons.snd4");
+            delete hCopy;
+        }
+        delete hFile;
+    }
+    else
+    {
+        PrintToChat(client, "[SM] Nothing to save!");
+        ClientCommand(client, "playgamesound buttons/button11.wav");
+    }
+    return Plugin_Handled;
 }
 
 //============================================================
@@ -1207,87 +1303,87 @@ public Action:Cmd_Save(client, args)
 
 public Action:Cmd_MR(client, args)
 {
-	if (client == 0 && !IsClientInGame((client = 1))) return Plugin_Handled;
-	g_Menu_Active[client] = false;
-	new Handle:hTable = CreatePanel();
-	decl String:sName[32]; Format(sName, sizeof(sName), "Movement Reader v%s\n \n", PLUGIN_VER);
-	SetPanelTitle(hTable, sName);
-	DrawPanelItem(hTable, "Record");
-	DrawPanelItem(hTable, "Playback");
-	DrawPanelItem(hTable, "Split");
-	DrawPanelItem(hTable, "Fwd >>");
-	DrawPanelItem(hTable, "Rew <<");
-	DrawPanelItem(hTable, "Stop");
-	DrawPanelItem(hTable, "Legacy Mode");
-	DrawPanelText(hTable, "\n \n8. Exit");
-	SendPanelToClient(hTable, client, MenuHandler, 300);
-	CloseHandle(hTable);
-	return Plugin_Handled;
+    if (client == 0 && !IsClientInGame((client = 1))) return Plugin_Handled;
+    g_Menu_Active[client] = false;
+    new Handle:hTable = CreatePanel();
+    decl String:sName[32]; Format(sName, sizeof(sName), "Movement Reader v%s\n \n", PLUGIN_VER);
+    SetPanelTitle(hTable, sName);
+    DrawPanelItem(hTable, "Record");
+    DrawPanelItem(hTable, "Playback");
+    DrawPanelItem(hTable, "Split");
+    DrawPanelItem(hTable, "Fwd >>");
+    DrawPanelItem(hTable, "Rew <<");
+    DrawPanelItem(hTable, "Stop");
+    DrawPanelItem(hTable, "Legacy Mode");
+    DrawPanelText(hTable, "\n \n8. Exit");
+    SendPanelToClient(hTable, client, MenuHandler, 300);
+    CloseHandle(hTable);
+    return Plugin_Handled;
 }
 
 public MenuHandler(Menu menu, MenuAction action, int client, int value)
 {
-	if (action == MenuAction_Cancel) return;
-	if (value == 1)
-	{
-		if (!g_RecClient[client])
-		{
-			SetConVarInt(g_ConVar_Record, client);
-			ClientCommand(client, "playgamesound buttons/bell1.wav");
-		}
-		else ClientCommand(client, "playgamesound buttons/button11.wav");
-	}
-	else if (value == 2)
-	{
-		ForceStop(client);
-		ResetConVar(g_ConVar_ForceFile);
-		SetConVarInt(g_ConVar_Play, client);
-		ClientCommand(client, "playgamesound buttons/blip1.wav");
-	}
-	else if (value == 3)
-	{
-		if (g_bIsApplyPlayerAction[client])
-		{
-			SetConVarInt(g_ConVar_Split, client);
-			ClientCommand(client, "playgamesound buttons/bell1.wav");
-		}
-		else ClientCommand(client, "playgamesound buttons/button11.wav");
-	}
-	else if (value == 4)
-	{
-		if (g_bIsApplyPlayerAction[client]) g_iTicks[client] += g_iTicksTotal[client] > g_iTicks[client] + 150 ? 150 : 0;
-		else ClientCommand(client, "playgamesound buttons/button11.wav");
-	}
-	else if (value == 5)
-	{
-		if (g_bIsApplyPlayerAction[client]) g_iTicks[client] -= g_iTicks[client] - 150 > 0 ? 150 : 0;
-		else ClientCommand(client, "playgamesound buttons/button11.wav");
-	}
-	else if (value == 6)
-	{
-		ForceStop(client);
-		ClientCommand(client, "playgamesound buttons/blip1.wav");
-	}
-	else if (value == 7)
-	{
-		if (client == 1)
-		{
-			if (!GetConVarBool(g_ConVar_ExRecord))
-			{
-				SetConVarBool(g_ConVar_ExRecord, true);
-				SetConVarBool(g_ConVar_ExPlay, true);
-				ClientCommand(client, "playgamesound buttons/blip1.wav");
-			}
-			else
-			{
-				SetConVarBool(g_ConVar_ExRecord, false);
-				SetConVarBool(g_ConVar_ExPlay, false);
-				ClientCommand(client, "playgamesound buttons/button11.wav");
-			}
-		}
-		else ClientCommand(client, "playgamesound buttons/button11.wav");
-	}
-	FakeClientCommand(client, "stmr");
+    if (action == MenuAction_Cancel) return;
+    if (value == 1)
+    {
+        if (!g_RecClient[client])
+        {
+            SetConVarInt(g_ConVar_Record, client);
+            ClientCommand(client, "playgamesound buttons/bell1.wav");
+        }
+        else ClientCommand(client, "playgamesound buttons/button11.wav");
+    }
+    else if (value == 2)
+    {
+        ForceStop(client);
+        ResetConVar(g_ConVar_ForceFile);
+        SetConVarInt(g_ConVar_Play, client);
+        ClientCommand(client, "playgamesound buttons/blip1.wav");
+    }
+    else if (value == 3)
+    {
+        if (g_bIsApplyPlayerAction[client])
+        {
+            SetConVarInt(g_ConVar_Split, client);
+            ClientCommand(client, "playgamesound buttons/bell1.wav");
+        }
+        else ClientCommand(client, "playgamesound buttons/button11.wav");
+    }
+    else if (value == 4)
+    {
+        if (g_bIsApplyPlayerAction[client]) g_iTicks[client] += g_iTicksTotal[client] > g_iTicks[client] + 150 ? 150 : 0;
+        else ClientCommand(client, "playgamesound buttons/button11.wav");
+    }
+    else if (value == 5)
+    {
+        if (g_bIsApplyPlayerAction[client]) g_iTicks[client] -= g_iTicks[client] - 150 > 0 ? 150 : 0;
+        else ClientCommand(client, "playgamesound buttons/button11.wav");
+    }
+    else if (value == 6)
+    {
+        ForceStop(client);
+        ClientCommand(client, "playgamesound buttons/blip1.wav");
+    }
+    else if (value == 7)
+    {
+        if (client == 1)
+        {
+            if (!GetConVarBool(g_ConVar_ExRecord))
+            {
+                SetConVarBool(g_ConVar_ExRecord, true);
+                SetConVarBool(g_ConVar_ExPlay, true);
+                ClientCommand(client, "playgamesound buttons/blip1.wav");
+            }
+            else
+            {
+                SetConVarBool(g_ConVar_ExRecord, false);
+                SetConVarBool(g_ConVar_ExPlay, false);
+                ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+        }
+        else ClientCommand(client, "playgamesound buttons/button11.wav");
+    }
+    FakeClientCommand(client, "stmr");
 }
 
 //============================================================
@@ -1295,317 +1391,879 @@ public MenuHandler(Menu menu, MenuAction action, int client, int value)
 
 stock ShowMenu(client)
 {
-	Handle panel = CreatePanel();
-	decl String:sName[64];
-	new String:eDbg[][] = {"OFF", "Screen", "Console"};
-	Format(sName, sizeof(sName), "MR v%s – Advanced Menu\n \n", PLUGIN_VER);
-	SetPanelTitle(panel, sName);
-	if (g_bIsApplyPlayerAction[client])
-	{
-		Format(sName, sizeof(sName), "Replay: %s", g_sFileName[client]);
-		DrawPanelText(panel, sName);
-		GetDisplayTime(sName, sizeof(sName), g_iTicksTotal[client]);
-		Format(sName, sizeof(sName), "Duration: %s", sName);
-		DrawPanelText(panel, sName);
-	}
-	else if (!g_RecClient[client])
-	{
-		GetConVarString(g_ConVar_ForceFile, sName, sizeof(sName));
-		if (StrEqual(sName, "default")) Format(sName, sizeof(sName), client > 1 && GetConVarBool(g_ConVar_FFA) ? "default_%d" : "default", client);
-		decl String:sFilePath[128];
-		BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, sName);
-		if (FileExists(sFilePath) && !g_Menu_bDelay[client])
-		{
-			new Handle:hFile = OpenFile(sFilePath, "r"), count = -3;
-			decl String:sFileLine[BLOCKS_LEN];
-			while (!IsEndOfFile(hFile) && ReadFileLine(hFile, sFileLine, sizeof(sFileLine))) count++;
-			delete hFile;
-			Format(sName, sizeof(sName), "Replay: %s", sName);
-			DrawPanelText(panel, sName);
-			GetDisplayTime(sName, sizeof(sName), count);
-			Format(sName, sizeof(sName), "Duration: %s", sName);
-			DrawPanelText(panel, sName);
-		}
-		else
-		{
-			DrawPanelText(panel, "Replay: N/A");
-			DrawPanelText(panel, "Duration: N/A");
-		}
-	}
-	else
-	{
-		Format(sName, sizeof(sName), "Replay: %s", g_sFileName[client]);
-		DrawPanelText(panel, sName);
-		DrawPanelText(panel, "Duration: N/A");
-	}
-	if (g_bIsApplyPlayerAction[client] && g_Menu_Goto[client])
-	{
-		Format(sName, sizeof(sName), "Line: %d / %d", g_Menu_iGotoTicks[client] + 4, g_iTicksTotal[client] + 3);
-		DrawPanelText(panel, sName);
-	}
-	DrawPanelText(panel, "\n \n");
-	
-	if (g_bIsApplyPlayerAction[client] || g_Menu_GotoUsage[client]) sName = "Split";
-	else if (g_RecClient[client]) sName = "Recording...";
-	else sName = "Record";
-	if (g_Menu_bDelay[client]) Format(sName, sizeof(sName), "Resume in... %.03f", GetConVarFloat(g_ConVar_TweakDelay) - (GetGameTime() - g_Menu_fDelayTime[client]));
-	DrawPanelItem(panel, sName);
-	DrawPanelItem(panel, "Play");
-	if (g_Menu_GotoUsage[client])
-	{
-		Format(sName, sizeof(sName), "Goto (%d)", g_Menu_iGotoTicks[client] + 4);
-		DrawPanelItem(panel, sName);
-	}
-	else if (g_bIsApplyPlayerAction[client] && !g_Menu_GotoUsage[client]) DrawPanelItem(panel, "Freeze");
-	else DrawPanelItem(panel, "Goto");
-	if (g_Menu_GotoUsage[client] && !g_RecClient[client] && !g_bIsApplyPlayerAction[client] && !g_Menu_bDelay[client]) DrawPanelItem(panel, "Reset");
-	else DrawPanelItem(panel, "Stop");
-	if (g_Menu_bLegacy[client]) DrawPanelItem(panel, "Legacy Mode: ON");
-	else DrawPanelItem(panel, "Legacy Mode: OFF");
-	Format(sName, sizeof(sName), "Debug Mode: %s", eDbg[g_Menu_eDebug[client]]);
-	DrawPanelItem(panel, sName);
-	DrawPanelItem(panel, "Tracker");
-	DrawPanelItem(panel, "Save");
-	DrawPanelText(panel, "\n \n");
-	DrawPanelItem(panel, "Exit");
-	SendPanelToClient(panel, client, MenuHandler_AdvMenu, 45);
-	delete panel;
+    Handle panel = CreatePanel();
+    decl String:sName[64];
+    new String:eDbg[][] = {"OFF", "Screen", "Console"};
+    Format(sName, sizeof(sName), "MR v%s – Advanced Menu\n \n", PLUGIN_VER);
+    SetPanelTitle(panel, sName);
+    if (g_bIsApplyPlayerAction[client])
+    {
+        Format(sName, sizeof(sName), "Replay: %s", g_sFileName[client]);
+        DrawPanelText(panel, sName);
+        GetDisplayTime(sName, sizeof(sName), g_iTicksTotal[client]);
+        Format(sName, sizeof(sName), "Duration: %s", sName);
+        DrawPanelText(panel, sName);
+    }
+    else if (!g_RecClient[client])
+    {
+        GetConVarString(g_ConVar_ForceFile, sName, sizeof(sName));
+        if (StrEqual(sName, "default")) Format(sName, sizeof(sName), client > 1 && GetConVarBool(g_ConVar_FFA) ? "default_%d" : "default", client);
+        decl String:sFilePath[128];
+        BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, sName);
+        if (FileExists(sFilePath) && !g_Menu_bDelay[client])
+        {
+            new Handle:hFile = OpenFile(sFilePath, "r"), count = -3;
+            decl String:sFileLine[BLOCKS_LEN];
+            while (!IsEndOfFile(hFile) && ReadFileLine(hFile, sFileLine, sizeof(sFileLine))) count++;
+            delete hFile;
+            Format(sName, sizeof(sName), "Replay: %s", sName);
+            DrawPanelText(panel, sName);
+            GetDisplayTime(sName, sizeof(sName), count);
+            Format(sName, sizeof(sName), "Duration: %s", sName);
+            DrawPanelText(panel, sName);
+        }
+        else
+        {
+            DrawPanelText(panel, "Replay: N/A");
+            DrawPanelText(panel, "Duration: N/A");
+        }
+    }
+    else
+    {
+        Format(sName, sizeof(sName), "Replay: %s", g_sFileName[client]);
+        DrawPanelText(panel, sName);
+        DrawPanelText(panel, "Duration: N/A");
+    }
+    if (g_bIsApplyPlayerAction[client] && g_Menu_Goto[client])
+    {
+        Format(sName, sizeof(sName), "Line: %d / %d", g_Menu_iGotoTicks[client] + 4, g_iTicksTotal[client] + 3);
+        DrawPanelText(panel, sName);
+    }
+    DrawPanelText(panel, "\n \n");
+    
+    if (g_bIsApplyPlayerAction[client] || g_Menu_GotoUsage[client]) sName = "Split";
+    else if (g_RecClient[client]) sName = "Recording...";
+    else sName = "Record";
+    if (g_Menu_bDelay[client]) Format(sName, sizeof(sName), "Resume in... %.03f", GetConVarFloat(g_ConVar_TweakDelay) - (GetGameTime() - g_Menu_fDelayTime[client]));
+    DrawPanelItem(panel, sName);
+    DrawPanelItem(panel, "Play");
+    if (g_Menu_GotoUsage[client])
+    {
+        Format(sName, sizeof(sName), "Goto (%d)", g_Menu_iGotoTicks[client] + 4);
+        DrawPanelItem(panel, sName);
+    }
+    else if (g_bIsApplyPlayerAction[client] && !g_Menu_GotoUsage[client]) DrawPanelItem(panel, "Freeze");
+    else DrawPanelItem(panel, "Goto");
+    if (g_Menu_GotoUsage[client] && !g_RecClient[client] && !g_bIsApplyPlayerAction[client] && !g_Menu_bDelay[client]) DrawPanelItem(panel, "Reset");
+    else DrawPanelItem(panel, "Stop");
+    if (g_Menu_bLegacy[client]) DrawPanelItem(panel, "Legacy Mode: ON");
+    else DrawPanelItem(panel, "Legacy Mode: OFF");
+    Format(sName, sizeof(sName), "Debug Mode: %s", eDbg[g_Menu_eDebug[client]]);
+    DrawPanelItem(panel, sName);
+    DrawPanelItem(panel, "Tracker");
+    DrawPanelItem(panel, "Save");
+    DrawPanelText(panel, "\n \n");
+    DrawPanelItem(panel, "Exit");
+    SendPanelToClient(panel, client, MenuHandler_AdvMenu, 45);
+    delete panel;
 }
 
 public Action:TimerMenuUpdate(Handle:timer, any:data)
 {
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (g_Menu_Active[i] && IsClientInGame(i))
-		{
-			ShowMenu(i);
-		}
-	}
-	return Plugin_Continue;
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (g_Menu_Active[i] && IsClientInGame(i))
+        {
+            ShowMenu(i);
+        }
+    }
+    return Plugin_Continue;
 }
 
 public Action:TimerCheckPress(Handle:timer, any:data)
 {
-	if (g_Menu_Active[1])
-	{
-		new client = 1;
-		if (IsClientInGame(client) && !g_RecClient[client] && !g_Menu_bDelay[client] && (!g_bIsApplyPlayerAction[client] || g_Menu_Goto[client]))
-		{
-			int buttons = GetClientButtons(client);
-			if (buttons & IN_USE && buttons & IN_RELOAD)
-			{
-				if (!g_Menu_iStmpClearTrack) g_Menu_iStmpClearTrack = GetGameTickCount();
-				if ((GetGameTickCount() - g_Menu_iStmpClearTrack) > 15)
-				{
-					FakeClientCommand(client, "st_mr_tracker_clear");
-					g_Menu_iStmpClearTrack = 0;
-				}
-			}
-			else if (g_Menu_iStmpClearTrack) g_Menu_iStmpClearTrack = 0;
-			if (buttons & IN_SPEED && buttons & IN_RELOAD)
-			{
-				if (!g_Menu_iStmpSwitchFile) g_Menu_iStmpSwitchFile = GetGameTickCount();
-				if ((GetGameTickCount() - g_Menu_iStmpSwitchFile) > 15)
-				{
-					decl String:sFileName[16];
-					GetConVarString(g_ConVar_ForceFile, sFileName, sizeof(sFileName));
-					SetConVarString(g_ConVar_ForceFile, !StrEqual(sFileName, "quicksave") ? "quicksave" : "default");
-					ClientCommand(client, "playgamesound buttons/blip1.wav");
-					g_Menu_iStmpSwitchFile = 0;
-					ShowMenu(client);
-				}
-			}
-			else if (g_Menu_iStmpSwitchFile) g_Menu_iStmpSwitchFile = 0;
-		}
-	}
+    if (g_Menu_Active[1])
+    {
+        new client = 1;
+        if (IsClientInGame(client) && !g_RecClient[client] && !g_Menu_bDelay[client] && (!g_bIsApplyPlayerAction[client] || g_Menu_Goto[client]))
+        {
+            int buttons = GetClientButtons(client);
+            if (buttons & IN_USE && buttons & IN_RELOAD)
+            {
+                if (!g_Menu_iStmpClearTrack) g_Menu_iStmpClearTrack = GetGameTickCount();
+                if ((GetGameTickCount() - g_Menu_iStmpClearTrack) > 15)
+                {
+                    FakeClientCommand(client, "st_mr_tracker_clear");
+                    g_Menu_iStmpClearTrack = 0;
+                }
+            }
+            else if (g_Menu_iStmpClearTrack) g_Menu_iStmpClearTrack = 0;
+            if (buttons & IN_SPEED && buttons & IN_RELOAD)
+            {
+                if (!g_Menu_iStmpSwitchFile) g_Menu_iStmpSwitchFile = GetGameTickCount();
+                if ((GetGameTickCount() - g_Menu_iStmpSwitchFile) > 15)
+                {
+                    decl String:sFileName[16];
+                    GetConVarString(g_ConVar_ForceFile, sFileName, sizeof(sFileName));
+                    SetConVarString(g_ConVar_ForceFile, !StrEqual(sFileName, "quicksave") ? "quicksave" : "default");
+                    ClientCommand(client, "playgamesound buttons/blip1.wav");
+                    g_Menu_iStmpSwitchFile = 0;
+                    ShowMenu(client);
+                }
+            }
+            else if (g_Menu_iStmpSwitchFile) g_Menu_iStmpSwitchFile = 0;
+        }
+    }
 }
 
 public MenuHandler_AdvMenu(Menu menu, MenuAction action, int client, int value)
 {
-	if (action == MenuAction_Cancel) return;
-	if (value == 1)
-	{
-		if (!g_Menu_IsRew[client] && !g_Menu_IsFixing[client])
-		{
-			if (g_Menu_GotoUsage[client] && !g_bIsApplyPlayerAction[client])
-			{
-				MenuHandler_AdvMenu(menu, action, client, 3);
-				if (g_bIsApplyPlayerAction[client]) g_Menu_FastSplit[client] = true;
-			}
-			else if (!g_RecClient[client])
-			{
-				g_Menu_fDelayTime[client] = GetGameTime() + GetGameFrameTime();
-				g_Menu_bDelay[client] = true;
-				SetEntityMoveType(client, MOVETYPE_NONE);
-				// SetEntityFlags(client, GetEntityFlags(client) | FL_FROZEN);
-				RevokeHostInputs();
-				if (client == 1) SetConVarFloat(FindConVar("host_timescale"), 1.0);
-			}
-			else if (client == 1)
-			{
-				if (GetConVarFloat(FindConVar("host_timescale")) < 1.0) SetConVarFloat(FindConVar("host_timescale"), 1.0);
-				else SetConVarFloat(FindConVar("host_timescale"), GetConVarFloat(g_ConVar_TweakTimeScale));
-				ClientCommand(client, "playgamesound buttons/blip1.wav");
-			}
-			else ClientCommand(client, "playgamesound buttons/button11.wav");
-		}
-		else ClientCommand(client, "playgamesound buttons/button11.wav");
-	}
-	else if (value == 2)
-	{
-		if (!g_Menu_bDelay[client] && !g_Menu_IsRew[client] && !g_Menu_IsFixing[client])
-		{
-			if (g_Menu_Goto[client])
-			{
-				g_Menu_Goto[client] = false;
-				if (GetEntityMoveType(client) == MOVETYPE_NONE) SetEntityMoveType(client, MOVETYPE_WALK);
-			}
-			else
-			{
-				ForceStop(client);
-				SetConVarInt(g_ConVar_Play, client);
-				if (!g_Menu_bLegacy[client]) g_iTicks[client] = g_Menu_iGotoTicks[client];
-			}
-			if (!g_bIsApplyPlayerAction[client])
-			{
-				ClientCommand(client, "playgamesound buttons/button11.wav");
-				ShowMenu(client);
-				return;
-			}
-			if (client == 1) SetConVarFloat(FindConVar("host_timescale"), 1.0);
-			if (GetConVarBool(g_ConVar_AllowHelpers))
-			{
-				SetVariantString("if (\"SpeedrunStart\" in getroottable()) SpeedrunStart()");
-				AcceptEntityInput(client, "RunScriptCode");
-				ServerCommand("nb_delete_all infected");	//helpful if everytime zombies are re-created by the external scripts
-			}
-			ClientCommand(client, "playgamesound buttons/blip1.wav");
-		}
-		else ClientCommand(client, "playgamesound buttons/button11.wav");
-	}
-	else if (value == 3)
-	{
-		if (!g_Menu_bDelay[client] && !g_Menu_FastSplit[client] && !g_Menu_IsRew[client] && !g_Menu_IsFixing[client])
-		{
-			if (!g_Menu_Goto[client])
-			{
-				if (!g_bIsApplyPlayerAction[client])
-				{
-					ForceStop(client);
-					SetConVarInt(g_ConVar_Play, client);
-					if (!g_bIsApplyPlayerAction[client] || !g_iTicksTotal[client])
-					{
-						ClientCommand(client, "playgamesound buttons/button11.wav");
-						ShowMenu(client);
-						return;
-					}
-				}
-				SetEntityMoveType(client, MOVETYPE_NONE);
-				if (!g_Menu_GotoUsage[client]) PrintHintText(client, "Press and hold [A] or [D] strafes to rewind or fast-forward.");
-				ClientCommand(client, "playgamesound buttons/blip1.wav");
-				if (client == 1) SetConVarFloat(FindConVar("host_timescale"), 1.0);
-				g_iTicks[client] = g_Menu_GotoUsage[client] ? g_Menu_iGotoTicks[client] : g_iTicks[client];
-				if (g_iTicks[client] >= g_iTicksTotal[client]) g_iTicks[client] = g_iTicksTotal[client] - 1;
-				g_Menu_iGotoTicks[client] = g_iTicks[client];
-				g_Menu_Goto[client] = true;
-				g_Menu_GotoUsage[client] = true;
-				g_Menu_Goto_iWarnMsg[client] = GetGameTickCount();
-			}
-			else
-			{
-				if (GetEntityMoveType(client) == MOVETYPE_NONE) SetEntityMoveType(client, MOVETYPE_WALK);
-				if (client == 1) SetConVarFloat(FindConVar("host_timescale"), GetConVarFloat(g_ConVar_TweakTimeScale));
-				g_Menu_Goto[client] = false;
-			}
-		}
-		else ClientCommand(client, "playgamesound buttons/button11.wav");
-	}
-	else if (value == 4)
-	{
-		if (!g_RecClient[client] && !g_bIsApplyPlayerAction[client] && !g_Menu_bDelay[client])
-		{
-			g_Menu_iGotoTicks[client] = 0;
-			g_Menu_GotoUsage[client] = false;
-		}
-		if (client == 1) SetConVarFloat(FindConVar("host_timescale"), 1.0);
-		ForceStop(client);
-		ClientCommand(client, "playgamesound buttons/blip1.wav");
-	}
-	else if (value == 5)
-	{
-		g_Menu_bLegacy[client] = !g_Menu_bLegacy[client];
-		ClientCommand(client, "playgamesound buttons/blip1.wav");
-	}
-	else if (value == 6)
-	{
-		g_Menu_eDebug[client]++;
-		g_Menu_eDebug[client] = g_Menu_eDebug[client] > 2 ? 0 : g_Menu_eDebug[client];
-		if (client > 1 && g_Menu_eDebug[client] == 1) g_Menu_eDebug[client] = 2;
-		if (g_Menu_eDebug[client] == 1)
-		{
-			SetVariantString("if (!(\"g_ST\" in getroottable())) ::g_STLib <- {Vars = {HUD = {Fields = {}}}}");
-			AcceptEntityInput(client, "RunScriptCode");
-			SetVariantString("::g_STLib.Vars.HUD.Fields.debug <- {slot = g_MapScript.HUD_MID_BOX, dataval = \"\", flags = g_MapScript.HUD_FLAG_NOBG | g_MapScript.HUD_FLAG_ALIGN_LEFT}; HUDPlace(g_MapScript.HUD_MID_BOX, 0.43, 0.42, 0.5, 0.3);");
-			AcceptEntityInput(client, "RunScriptCode");
-			SetVariantString("::g_STLib.Vars.HUD.Fields.debug2 <- {slot = g_MapScript.HUD_FAR_LEFT, dataval = \"\", flags = g_MapScript.HUD_FLAG_NOBG}; HUDPlace(g_MapScript.HUD_FAR_LEFT, 0.43, 0.42, 0.5, 0.3);");
-			AcceptEntityInput(client, "RunScriptCode");
-			SetVariantString("NetProps.SetPropInt(self, \"m_bChallengeModeActive\", 1)");
-			AcceptEntityInput(FindEntityByClassname(-1, "terror_gamerules"), "RunScriptCode");
-		}
-		else if (client == 1)
-		{
-			SetVariantString("if (!(\"g_ST\" in getroottable())) ::g_STLib <- {Vars = {HUD = {Fields = {}}}}");
-			AcceptEntityInput(client, "RunScriptCode");
-			// SetVariantString("if (\"debug\" in g_STLib.Vars.HUD.Fields) {delete g_STLib.Vars.HUD.Fields.debug; delete g_STLib.Vars.HUD.Fields.debug2}");	//seems affects on optimization
-			SetVariantString("if (\"debug\" in g_STLib.Vars.HUD.Fields) {g_STLib.Vars.HUD.Fields.debug.dataval = \"\"; g_STLib.Vars.HUD.Fields.debug2.dataval = \"\"}");
-			AcceptEntityInput(client, "RunScriptCode");
-			SetVariantString("HUDSetLayout(g_STLib.Vars.HUD)");
-			AcceptEntityInput(client, "RunScriptCode");
-		}
-		ClientCommand(client, "playgamesound buttons/blip1.wav");
-	}
-	else if (value == 7)
-	{
-		if (client == 1)
-		{
-			static int _totalTaps;
-			if (!(_totalTaps%5)) PrintHintText(client, "Hold [E] + [R] buttons (use and reload) to remove all tracks.");
-			_totalTaps++;
-			SetConVarFloat(FindConVar("host_timescale"), 1.0);
-		}
-		FakeClientCommand(client, "st_mr_tracker");
-	}
-	else if (value == 8)
-	{
-		if (client == 1)
-		{
-			static int _totalTaps;
-			if (!(_totalTaps%3)) PrintHintText(client, "Hold [SHIFT] + [R] buttons to load the last save.");
-			_totalTaps++;
-			SetConVarFloat(FindConVar("host_timescale"), 1.0);
-		}
-		FakeClientCommand(client, "st_mr_save");
-	}
-	else if (value == 9)
-	{
-		g_Menu_Active[client] = false;
-		if (g_Menu_bDelay[client])
-		{
-			g_Menu_bDelay[client] = false;
-			if (GetEntityMoveType(client) == MOVETYPE_NONE) SetEntityMoveType(client, MOVETYPE_WALK);
-		}
-		ClientCommand(client, "playgamesound buttons/button11.wav");
-		return;
-	}
-	ShowMenu(client);
+    if (action == MenuAction_Cancel) return;
+    if (value == 1)
+    {
+        if (!g_Menu_IsRew[client] && !g_Menu_IsFixing[client])
+        {
+            if (g_Menu_GotoUsage[client] && !g_bIsApplyPlayerAction[client])
+            {
+                MenuHandler_AdvMenu(menu, action, client, 3);
+                if (g_bIsApplyPlayerAction[client]) g_Menu_FastSplit[client] = true;
+            }
+            else if (!g_RecClient[client])
+            {
+                g_Menu_fDelayTime[client] = GetGameTime() + GetGameFrameTime();
+                g_Menu_bDelay[client] = true;
+                SetEntityMoveType(client, MOVETYPE_NONE);
+                // SetEntityFlags(client, GetEntityFlags(client) | FL_FROZEN);
+                RevokeHostInputs();
+                if (client == 1) SetConVarFloat(FindConVar("host_timescale"), 1.0);
+            }
+            else if (client == 1)
+            {
+                if (GetConVarFloat(FindConVar("host_timescale")) < 1.0) SetConVarFloat(FindConVar("host_timescale"), 1.0);
+                else SetConVarFloat(FindConVar("host_timescale"), GetConVarFloat(g_ConVar_TweakTimeScale));
+                ClientCommand(client, "playgamesound buttons/blip1.wav");
+            }
+            else ClientCommand(client, "playgamesound buttons/button11.wav");
+        }
+        else ClientCommand(client, "playgamesound buttons/button11.wav");
+    }
+    else if (value == 2)
+    {
+        if (!g_Menu_bDelay[client] && !g_Menu_IsRew[client] && !g_Menu_IsFixing[client])
+        {
+            if (g_Menu_Goto[client])
+            {
+                g_Menu_Goto[client] = false;
+                if (GetEntityMoveType(client) == MOVETYPE_NONE) SetEntityMoveType(client, MOVETYPE_WALK);
+            }
+            else
+            {
+                ForceStop(client);
+                SetConVarInt(g_ConVar_Play, client);
+                if (!g_Menu_bLegacy[client]) g_iTicks[client] = g_Menu_iGotoTicks[client];
+            }
+            if (!g_bIsApplyPlayerAction[client])
+            {
+                ClientCommand(client, "playgamesound buttons/button11.wav");
+                ShowMenu(client);
+                return;
+            }
+            if (client == 1) SetConVarFloat(FindConVar("host_timescale"), 1.0);
+            if (GetConVarBool(g_ConVar_AllowHelpers))
+            {
+                SetVariantString("if (\"SpeedrunStart\" in getroottable()) SpeedrunStart()");
+                AcceptEntityInput(client, "RunScriptCode");
+                ServerCommand("nb_delete_all infected");	//helpful if everytime zombies are re-created by the external scripts
+            }
+            ClientCommand(client, "playgamesound buttons/blip1.wav");
+        }
+        else ClientCommand(client, "playgamesound buttons/button11.wav");
+    }
+    else if (value == 3)
+    {
+        if (!g_Menu_bDelay[client] && !g_Menu_FastSplit[client] && !g_Menu_IsRew[client] && !g_Menu_IsFixing[client])
+        {
+            if (!g_Menu_Goto[client])
+            {
+                if (!g_bIsApplyPlayerAction[client])
+                {
+                    ForceStop(client);
+                    SetConVarInt(g_ConVar_Play, client);
+                    if (!g_bIsApplyPlayerAction[client] || !g_iTicksTotal[client])
+                    {
+                        ClientCommand(client, "playgamesound buttons/button11.wav");
+                        ShowMenu(client);
+                        return;
+                    }
+                }
+                SetEntityMoveType(client, MOVETYPE_NONE);
+                if (!g_Menu_GotoUsage[client]) PrintHintText(client, "Press and hold [A] or [D] strafes to rewind or fast-forward.");
+                ClientCommand(client, "playgamesound buttons/blip1.wav");
+                if (client == 1) SetConVarFloat(FindConVar("host_timescale"), 1.0);
+                g_iTicks[client] = g_Menu_GotoUsage[client] ? g_Menu_iGotoTicks[client] : g_iTicks[client];
+                if (g_iTicks[client] >= g_iTicksTotal[client]) g_iTicks[client] = g_iTicksTotal[client] - 1;
+                g_Menu_iGotoTicks[client] = g_iTicks[client];
+                g_Menu_Goto[client] = true;
+                g_Menu_GotoUsage[client] = true;
+                g_Menu_Goto_iWarnMsg[client] = GetGameTickCount();
+            }
+            else
+            {
+                if (GetEntityMoveType(client) == MOVETYPE_NONE) SetEntityMoveType(client, MOVETYPE_WALK);
+                if (client == 1) SetConVarFloat(FindConVar("host_timescale"), GetConVarFloat(g_ConVar_TweakTimeScale));
+                g_Menu_Goto[client] = false;
+            }
+        }
+        else ClientCommand(client, "playgamesound buttons/button11.wav");
+    }
+    else if (value == 4)
+    {
+        if (!g_RecClient[client] && !g_bIsApplyPlayerAction[client] && !g_Menu_bDelay[client])
+        {
+            g_Menu_iGotoTicks[client] = 0;
+            g_Menu_GotoUsage[client] = false;
+        }
+        if (client == 1) SetConVarFloat(FindConVar("host_timescale"), 1.0);
+        ForceStop(client);
+        ClientCommand(client, "playgamesound buttons/blip1.wav");
+    }
+    else if (value == 5)
+    {
+        g_Menu_bLegacy[client] = !g_Menu_bLegacy[client];
+        ClientCommand(client, "playgamesound buttons/blip1.wav");
+    }
+    else if (value == 6)
+    {
+        g_Menu_eDebug[client]++;
+        g_Menu_eDebug[client] = g_Menu_eDebug[client] > 2 ? 0 : g_Menu_eDebug[client];
+        if (client > 1 && g_Menu_eDebug[client] == 1) g_Menu_eDebug[client] = 2;
+        if (g_Menu_eDebug[client] == 1)
+        {
+            SetVariantString("if (!(\"g_ST\" in getroottable())) ::g_STLib <- {Vars = {HUD = {Fields = {}}}}");
+            AcceptEntityInput(client, "RunScriptCode");
+            SetVariantString("::g_STLib.Vars.HUD.Fields.debug <- {slot = g_MapScript.HUD_MID_BOX, dataval = \"\", flags = g_MapScript.HUD_FLAG_NOBG | g_MapScript.HUD_FLAG_ALIGN_LEFT}; HUDPlace(g_MapScript.HUD_MID_BOX, 0.43, 0.42, 0.5, 0.3);");
+            AcceptEntityInput(client, "RunScriptCode");
+            SetVariantString("::g_STLib.Vars.HUD.Fields.debug2 <- {slot = g_MapScript.HUD_FAR_LEFT, dataval = \"\", flags = g_MapScript.HUD_FLAG_NOBG}; HUDPlace(g_MapScript.HUD_FAR_LEFT, 0.43, 0.42, 0.5, 0.3);");
+            AcceptEntityInput(client, "RunScriptCode");
+            SetVariantString("NetProps.SetPropInt(self, \"m_bChallengeModeActive\", 1)");
+            AcceptEntityInput(FindEntityByClassname(-1, "terror_gamerules"), "RunScriptCode");
+        }
+        else if (client == 1)
+        {
+            SetVariantString("if (!(\"g_ST\" in getroottable())) ::g_STLib <- {Vars = {HUD = {Fields = {}}}}");
+            AcceptEntityInput(client, "RunScriptCode");
+            // SetVariantString("if (\"debug\" in g_STLib.Vars.HUD.Fields) {delete g_STLib.Vars.HUD.Fields.debug; delete g_STLib.Vars.HUD.Fields.debug2}");	//seems affects on optimization
+            SetVariantString("if (\"debug\" in g_STLib.Vars.HUD.Fields) {g_STLib.Vars.HUD.Fields.debug.dataval = \"\"; g_STLib.Vars.HUD.Fields.debug2.dataval = \"\"}");
+            AcceptEntityInput(client, "RunScriptCode");
+            SetVariantString("HUDSetLayout(g_STLib.Vars.HUD)");
+            AcceptEntityInput(client, "RunScriptCode");
+        }
+        ClientCommand(client, "playgamesound buttons/blip1.wav");
+    }
+    else if (value == 7)
+    {
+        if (client == 1)
+        {
+            static int _totalTaps;
+            if (!(_totalTaps%5)) PrintHintText(client, "Hold [E] + [R] buttons (use and reload) to remove all tracks.");
+            _totalTaps++;
+            SetConVarFloat(FindConVar("host_timescale"), 1.0);
+        }
+        FakeClientCommand(client, "st_mr_tracker");
+    }
+    else if (value == 8)
+    {
+        if (client == 1)
+        {
+            static int _totalTaps;
+            if (!(_totalTaps%3)) PrintHintText(client, "Hold [SHIFT] + [R] buttons to load the last save.");
+            _totalTaps++;
+            SetConVarFloat(FindConVar("host_timescale"), 1.0);
+        }
+        FakeClientCommand(client, "st_mr_save");
+    }
+    else if (value == 9)
+    {
+        g_Menu_Active[client] = false;
+        if (g_Menu_bDelay[client])
+        {
+            g_Menu_bDelay[client] = false;
+            if (GetEntityMoveType(client) == MOVETYPE_NONE) SetEntityMoveType(client, MOVETYPE_WALK);
+        }
+        ClientCommand(client, "playgamesound buttons/button11.wav");
+        return;
+    }
+    ShowMenu(client);
 }
 
 public Action:Cmd_MR2(client, args)
 {
-	if (client == 0 && !IsClientInGame((client = 1))) return Plugin_Handled;
-	g_Menu_Active[client] = true;
-	ShowMenu(client);
-	return Plugin_Handled;
+    if (client == 0 && !IsClientInGame((client = 1))) return Plugin_Handled;
+    g_Menu_Active[client] = true;
+    ShowMenu(client);
+    return Plugin_Handled;
+}
+
+//========================================================================================================================
+//MR3 — 中文菜单 (Menu API)
+//========================================================================================================================
+
+stock void MR3_AddItem(Menu menu, MR3MenuItem item, const char[] display)
+{
+    char info[8];
+    IntToString(view_as<int>(item), info, sizeof(info));
+    AddMenuItem(menu, info, display);
+}
+
+public Action Cmd_MR3(int client, int args)
+{
+    if (client == 0 && !IsClientInGame((client = 1)))
+        return Plugin_Handled;
+    MR3_OpenMenu(client);
+    return Plugin_Handled;
+}
+
+stock void MR3_OpenMenu(int client)
+{
+    Menu menu = CreateMenu(MenuHandler_MR3);
+    SetMenuTitle(menu, "Movement Reader v%s\n \n", PLUGIN_VER);
+
+    if (g_Menu_bDelay[client])
+    {
+        MR3_AddItem(menu, MR3_CancelDelay, "取消录制");
+        MR3_AddItem(menu, MR3_Exit, "退出菜单");
+    }
+    else if (g_RecClient[client])
+    {
+        if (g_Menu_bRecPaused[client])
+        {
+            char sSpeed[48];
+            Format(sSpeed, sizeof(sSpeed), "跳转帧数(N值): %d", g_iRecRewindSpeed[client]);
+            MR3_AddItem(menu, MR3_ResumeRecord, "继续录制");
+            MR3_AddItem(menu, MR3_StepForward, "前进N帧");
+            MR3_AddItem(menu, MR3_StepBack, "后退N帧");
+            MR3_AddItem(menu, MR3_RecRewindSpeed, sSpeed);
+            MR3_AddItem(menu, MR3_RecJumpStart, "跳转至开头");
+            MR3_AddItem(menu, MR3_RecJumpEnd, "跳转至结尾");
+            if (g_Menu_bLegacy[client])
+                MR3_AddItem(menu, MR3_Legacy_On, "Legacy模式: ON");
+            else
+                MR3_AddItem(menu, MR3_Legacy_Off, "Legacy模式: OFF");
+            MR3_AddItem(menu, MR3_Exit, "退出菜单");
+        }
+        else
+        {
+            MR3_AddItem(menu, MR3_PauseRecord, "暂停录制");
+            if (g_Menu_bLegacy[client])
+                MR3_AddItem(menu, MR3_Legacy_On, "Legacy模式: ON");
+            else
+                MR3_AddItem(menu, MR3_Legacy_Off, "Legacy模式: OFF");
+            MR3_AddItem(menu, MR3_Exit, "退出菜单");
+        }
+    }
+    else if (g_bIsApplyPlayerAction[client])
+    {
+        if (g_Menu_Goto[client])
+        {
+            MR3_AddItem(menu, MR3_Resume, "继续播放");
+            MR3_AddItem(menu, MR3_JumpStart, "跳转至开头");
+            MR3_AddItem(menu, MR3_JumpEnd, "跳转至结尾");
+            MR3_AddItem(menu, MR3_Split, "分割录制");
+            if (g_Menu_bLegacy[client])
+                MR3_AddItem(menu, MR3_Legacy_On, "Legacy模式: ON");
+            else
+                MR3_AddItem(menu, MR3_Legacy_Off, "Legacy模式: OFF");
+            MR3_AddItem(menu, MR3_Tracker, "轨迹绘制");
+            MR3_AddItem(menu, MR3_ClearTracker, "清除轨迹");
+            MR3_AddItem(menu, MR3_QuickSave, "快速保存");
+            MR3_AddItem(menu, MR3_Stop, "停止");
+            MR3_AddItem(menu, MR3_Exit, "退出菜单");
+        }
+        else
+        {
+            MR3_AddItem(menu, MR3_Freeze, "暂停播放");
+            MR3_AddItem(menu, MR3_Split, "分割录制");
+            if (g_Menu_bLegacy[client])
+                MR3_AddItem(menu, MR3_Legacy_On, "Legacy模式: ON");
+            else
+                MR3_AddItem(menu, MR3_Legacy_Off, "Legacy模式: OFF");
+            MR3_AddItem(menu, MR3_Tracker, "轨迹绘制");
+            MR3_AddItem(menu, MR3_ClearTracker, "清除轨迹");
+            MR3_AddItem(menu, MR3_QuickSave, "快速保存");
+            MR3_AddItem(menu, MR3_Stop, "停止");
+            MR3_AddItem(menu, MR3_Exit, "退出菜单");
+        }
+    }
+    else
+    {
+        MR3_AddItem(menu, MR3_Record, "开始录制");
+        MR3_AddItem(menu, MR3_Play, "播放默认录像");
+        MR3_AddItem(menu, MR3_LoadFile, "加载录像文件");
+        MR3_AddItem(menu, MR3_Tracker, "轨迹绘制");
+        MR3_AddItem(menu, MR3_ClearTracker, "清除轨迹");
+        MR3_AddItem(menu, MR3_QuickSave, "快速保存");
+        if (g_Menu_bLegacy[client])
+            MR3_AddItem(menu, MR3_Legacy_On, "Legacy模式: ON");
+        else
+            MR3_AddItem(menu, MR3_Legacy_Off, "Legacy模式: OFF");
+        MR3_AddItem(menu, MR3_Exit, "退出菜单");
+    }
+
+    DisplayMenu(menu, client, MENU_TIME_FOREVER);
+}
+
+public int MenuHandler_MR3(Menu menu, MenuAction action, int param1, int param2)
+{
+    int client = param1;
+
+    if (action == MenuAction_Select)
+    {
+        char info[8];
+        if (!GetMenuItem(menu, param2, info, sizeof(info)))
+            return 0;
+
+        MR3MenuItem item = view_as<MR3MenuItem>(StringToInt(info));
+
+        switch (item)
+        {
+            case MR3_Record:
+            {
+                if (!g_RecClient[client] && !g_Menu_bDelay[client])
+                {
+                    SetConVarInt(g_ConVar_Record, client);
+                    ClientCommand(client, "playgamesound buttons/bell1.wav");
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_Play:
+            {
+                if (!g_RecClient[client] && !g_Menu_bDelay[client])
+                {
+                    ForceStop(client);
+                    ResetConVar(g_ConVar_ForceFile);
+                    SetConVarInt(g_ConVar_Play, client);
+                    ClientCommand(client, "playgamesound buttons/blip1.wav");
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_LoadFile:
+            {
+                if (!g_RecClient[client] && !g_Menu_bDelay[client])
+                    MR3_OpenLoadFileMenu(client);
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+                return 0;
+            }
+
+            case MR3_Tracker:
+            {
+                FakeClientCommand(client, "st_mr_tracker");
+            }
+
+            case MR3_ClearTracker:
+            {
+                FakeClientCommand(client, "st_mr_tracker_clear");
+            }
+
+            case MR3_QuickSave:
+            {
+                FakeClientCommand(client, "st_mr_save");
+            }
+
+            case MR3_Legacy_On, MR3_Legacy_Off:
+            {
+                g_Menu_bLegacy[client] = !g_Menu_bLegacy[client];
+                ClientCommand(client, "playgamesound buttons/blip1.wav");
+            }
+
+            case MR3_PauseRecord:
+            {
+                if (g_RecClient[client] && !g_Menu_bRecPaused[client])
+                {
+                    g_Menu_bRecPaused[client] = true;
+                    int size = GetArraySize(g_hButtons[client]);
+                    g_iRecRewindFrame[client] = size > 0 ? size - 1 : 0;
+                    SetEntityMoveType(client, MOVETYPE_NONE);
+                    PrintHintText(client, "录制暂停 | 帧: %d / %d | 步长: %d",
+                        g_iRecRewindFrame[client] + 1, size, g_iRecRewindSpeed[client]);
+                    ClientCommand(client, "playgamesound buttons/blip1.wav");
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_CancelDelay:
+            {
+                if (g_Menu_bDelay[client])
+                {
+                    g_Menu_bDelay[client] = false;
+                    if (GetEntityMoveType(client) == MOVETYPE_NONE)
+                        SetEntityMoveType(client, MOVETYPE_WALK);
+                    ForceStop(client);
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+                }
+            }
+
+            case MR3_Freeze:
+            {
+                if (g_bIsApplyPlayerAction[client] && !g_Menu_Goto[client] && !g_Menu_bDelay[client])
+                {
+                    SetEntityMoveType(client, MOVETYPE_NONE);
+                    g_Menu_Goto[client] = true;
+                    g_Menu_GotoUsage[client] = true;
+                    g_Menu_iGotoTicks[client] = g_iTicks[client];
+                    PrintHintText(client, "按A/D键后退/前进");
+                    ClientCommand(client, "playgamesound buttons/blip1.wav");
+                    if (client == 1)
+                        SetConVarFloat(FindConVar("host_timescale"), 1.0);
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_Split:
+            {
+                if (g_bIsApplyPlayerAction[client] && !g_RecClient[client])
+                {
+                    SetConVarInt(g_ConVar_Split, client);
+                    ClientCommand(client, "playgamesound buttons/bell1.wav");
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_Stop:
+            {
+                if (g_bIsApplyPlayerAction[client] || g_RecClient[client] || g_Menu_bDelay[client])
+                {
+                    if (client == 1)
+                        SetConVarFloat(FindConVar("host_timescale"), 1.0);
+                    ForceStop(client);
+                    ClientCommand(client, "playgamesound buttons/blip1.wav");
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_Resume:
+            {
+                if (g_bIsApplyPlayerAction[client] && g_Menu_Goto[client])
+                {
+                    g_Menu_Goto[client] = false;
+                    if (GetEntityMoveType(client) == MOVETYPE_NONE)
+                        SetEntityMoveType(client, MOVETYPE_WALK);
+                    if (client == 1)
+                        SetConVarFloat(FindConVar("host_timescale"),
+                            GetConVarFloat(g_ConVar_TweakTimeScale));
+                    ClientCommand(client, "playgamesound buttons/blip1.wav");
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_JumpStart:
+            {
+                if (g_bIsApplyPlayerAction[client] && g_Menu_Goto[client])
+                {
+                    g_iTicks[client] = 0;
+                    g_Menu_iGotoTicks[client] = 0;
+                    ClientCommand(client, "playgamesound buttons/blip1.wav");
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_JumpEnd:
+            {
+                if (g_bIsApplyPlayerAction[client] && g_Menu_Goto[client] && g_iTicksTotal[client] > 0)
+                {
+                    g_iTicks[client] = g_iTicksTotal[client] - 1;
+                    g_Menu_iGotoTicks[client] = g_iTicks[client];
+                    ClientCommand(client, "playgamesound buttons/blip1.wav");
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_ResumeRecord:
+            {
+                if (g_RecClient[client] && g_Menu_bRecPaused[client])
+                {
+                    int total = GetArraySize(g_hButtons[client]);
+                    int rewindFrame = g_iRecRewindFrame[client];
+                    if (rewindFrame >= total) rewindFrame = total - 1;
+                    if (rewindFrame < 0) rewindFrame = 0;
+
+                    // Close and reopen file to truncate at rewind point
+                    CloseHandle(g_RecFile[client]);
+
+                    decl String:sFilePath[128];
+                    BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, g_sFileName[client]);
+
+                    g_RecFile[client] = OpenFile(sFilePath, "w");
+                    if (g_RecFile[client] != INVALID_HANDLE)
+                    {
+                        WriteFileLine(g_RecFile[client], "Origin:%.03f:%.03f:%.03f",
+                            g_fRecStartOrigin[client][0], g_fRecStartOrigin[client][1], g_fRecStartOrigin[client][2]);
+                        WriteFileLine(g_RecFile[client], "Angles:%.03f:%.03f:%.03f",
+                            g_fRecStartAngles[client][0], g_fRecStartAngles[client][1], g_fRecStartAngles[client][2]);
+                        WriteFileLine(g_RecFile[client], "Velocity:%.03f:%.03f:%.03f",
+                            g_fRecStartVelocity[client][0], g_fRecStartVelocity[client][1], g_fRecStartVelocity[client][2]);
+
+                        decl String:sFileData[BLOCK_SIZE], String:sFileLine[BLOCKS_LEN];
+                        for (int i = 0; i <= rewindFrame; i++)
+                        {
+                            int mask = GetArrayCell(g_hButtons[client], i);
+                            float fAng0 = GetArrayCell(g_hAngles[client][0], i);
+                            float fAng1 = GetArrayCell(g_hAngles[client][1], i);
+                            int weapon = GetArrayCell(g_hWeapons[client], i);
+
+                            Format(sFileLine, BLOCKS_LEN, "%d:%.03f:%.03f:%d", mask, fAng0, fAng1, weapon);
+
+                            if (GetArrayString(g_hOrigin[client], i, sFileData, BLOCK_SIZE) > 0 && strlen(sFileData) > 0)
+                            {
+                                Format(sFileLine, BLOCKS_LEN, "%s:%s", sFileLine, sFileData);
+                                if (GetArrayString(g_hVelocity[client], i, sFileData, BLOCK_SIZE) > 0 && strlen(sFileData) > 0)
+                                {
+                                    Format(sFileLine, BLOCKS_LEN, "%s:%s", sFileLine, sFileData);
+                                    if (GetArrayString(g_hFlags[client], i, sFileData, BLOCK_SIZE) > 0 && strlen(sFileData) > 0)
+                                    {
+                                        Format(sFileLine, BLOCKS_LEN, "%s:%s", sFileLine, sFileData);
+                                    }
+                                }
+                                sFileLine[strlen(sFileLine) - 1] = 0;
+                            }
+                            WriteFileLine(g_RecFile[client], sFileLine);
+                        }
+                    }
+
+                    g_RecLine[client][0] = 0;
+                    SetEntityMoveType(client, MOVETYPE_WALK);
+                    g_Menu_bRecPaused[client] = false;
+                    ClientCommand(client, "playgamesound buttons/blip1.wav");
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_StepForward:
+            {
+                if (g_RecClient[client] && g_Menu_bRecPaused[client])
+                {
+                    int total = GetArraySize(g_hButtons[client]);
+                    if (total > 0)
+                    {
+                        int frame = g_iRecRewindFrame[client] + g_iRecRewindSpeed[client];
+                        g_iRecRewindFrame[client] = frame < total ? frame : total - 1;
+                        MR3_TeleportToRecFrame(client, g_iRecRewindFrame[client]);
+                    }
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_StepBack:
+            {
+                if (g_RecClient[client] && g_Menu_bRecPaused[client])
+                {
+                    int frame = g_iRecRewindFrame[client] - g_iRecRewindSpeed[client];
+                    g_iRecRewindFrame[client] = frame > 0 ? frame : 0;
+                    MR3_TeleportToRecFrame(client, g_iRecRewindFrame[client]);
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_RecRewindSpeed:
+            {
+                if (g_RecClient[client] && g_Menu_bRecPaused[client])
+                {
+                    g_iRecRewindSpeed[client] *= 4;
+                    if (g_iRecRewindSpeed[client] > 64)
+                        g_iRecRewindSpeed[client] = 1;
+                    ClientCommand(client, "playgamesound buttons/blip1.wav");
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_RecJumpStart:
+            {
+                if (g_RecClient[client] && g_Menu_bRecPaused[client])
+                {
+                    g_iRecRewindFrame[client] = 0;
+                    MR3_TeleportToRecFrame(client, 0);
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_RecJumpEnd:
+            {
+                if (g_RecClient[client] && g_Menu_bRecPaused[client])
+                {
+                    int total = GetArraySize(g_hButtons[client]);
+                    if (total > 0)
+                    {
+                        g_iRecRewindFrame[client] = total - 1;
+                        MR3_TeleportToRecFrame(client, total - 1);
+                    }
+                }
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
+            }
+
+            case MR3_Exit:
+            {
+                ClientCommand(client, "playgamesound buttons/button11.wav");
+                return 0;
+            }
+        }
+
+        MR3_OpenMenu(client);
+    }
+    else if (action == MenuAction_End)
+    {
+        delete menu;
+    }
+
+    return 0;
+}
+
+//========================================================================================================================
+//MR3 — 传送至录制帧
+//========================================================================================================================
+
+stock void MR3_TeleportToRecFrame(int client, int frame)
+{
+    int total = GetArraySize(g_hButtons[client]);
+    if (total <= 0 || frame < 0 || frame >= total) return;
+
+    float fPos[3], fAng[3], fVel[3];
+    char sFileData[BLOCK_SIZE], sValue[3][16];
+
+    if (GetArrayString(g_hOrigin[client], frame, sFileData, BLOCK_SIZE) > 0
+        && ExplodeString(sFileData, ",", sValue, 3, 16) == 3)
+    {
+        for (int i; i < 3; i++) fPos[i] = StringToFloat(sValue[i]);
+    }
+    else return;
+
+    fAng[0] = GetArrayCell(g_hAngles[client][0], frame);
+    fAng[1] = GetArrayCell(g_hAngles[client][1], frame);
+
+    if (GetArrayString(g_hVelocity[client], frame, sFileData, BLOCK_SIZE) > 0
+        && ExplodeString(sFileData, ",", sValue, 3, 16) == 3)
+    {
+        for (int i; i < 3; i++) fVel[i] = StringToFloat(sValue[i]);
+    }
+
+    TeleportEntity(client, NULL_VECTOR, fAng, fVel);
+    DispatchKeyValueVector(client, "origin", fPos);
+
+    PrintHintText(client, "录制暂停 | 帧: %d / %d | 步长: %d",
+        frame + 1, total, g_iRecRewindSpeed[client]);
+}
+
+//========================================================================================================================
+//MR3 — 文件浏览器
+//========================================================================================================================
+
+stock void MR3_OpenLoadFileMenu(int client)
+{
+    char sDirPath[128];
+    BuildPath(Path_SM, sDirPath, sizeof(sDirPath), MR_DIR);
+
+    if (!DirExists(sDirPath))
+    {
+        PrintToChat(client, "[SM] 录像目录不存在!");
+        MR3_OpenMenu(client);
+        return;
+    }
+
+    DirectoryListing dir = OpenDirectory(sDirPath);
+    if (dir == null)
+    {
+        PrintToChat(client, "[SM] 无法打开录像目录!");
+        MR3_OpenMenu(client);
+        return;
+    }
+
+    Menu fileMenu = CreateMenu(MenuHandler_MR3_LoadFile);
+    SetMenuTitle(fileMenu, "选择录像文件\n \n");
+
+    char fileName[128];
+    FileType fileType;
+    int fileCount;
+
+    while (dir.GetNext(fileName, sizeof(fileName), fileType))
+    {
+        if (fileType != FileType_File)
+            continue;
+        if (StrContains(fileName, ".txt", false) == -1)
+            continue;
+        int len = strlen(fileName);
+        if (len > 4)
+            fileName[len - 4] = '\0';
+        AddMenuItem(fileMenu, fileName, fileName);
+        fileCount++;
+    }
+    delete dir;
+
+    if (fileCount == 0)
+    {
+        PrintToChat(client, "[SM] 没有可用的录像文件!");
+        delete fileMenu;
+        MR3_OpenMenu(client);
+        return;
+    }
+
+    DisplayMenu(fileMenu, client, MENU_TIME_FOREVER);
+}
+
+public int MenuHandler_MR3_LoadFile(Menu menu, MenuAction action, int param1, int param2)
+{
+    int client = param1;
+
+    if (action == MenuAction_Select)
+    {
+        char fileName[64];
+        if (!GetMenuItem(menu, param2, fileName, sizeof(fileName)))
+            return 0;
+
+        char sFilePath[128];
+        BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, fileName);
+
+        if (!FileExists(sFilePath))
+        {
+            PrintToChat(client, "[SM] 文件 \"%s\" 不存在!", fileName);
+            MR3_OpenMenu(client);
+            return 0;
+        }
+
+        ForceStop(client);
+        SetConVarString(g_ConVar_ForceFile, fileName);
+        SetConVarInt(g_ConVar_Play, client);
+
+        PrintToChat(client, "[SM] 已加载录像文件: %s", fileName);
+        ClientCommand(client, "playgamesound buttons/blip1.wav");
+
+        MR3_OpenMenu(client);
+    }
+    else if (action == MenuAction_Cancel)
+    {
+        MR3_OpenMenu(client);
+    }
+    else if (action == MenuAction_End)
+    {
+        delete menu;
+    }
+
+    return 0;
 }
 
 //========================================================================================================================
@@ -1614,30 +2272,30 @@ public Action:Cmd_MR2(client, args)
 
 stock bool:IsPlayerRecFile(const char[] sName)
 {
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (g_RecClient[i] && StrEqual(sName, g_sFileName[i]))
-		{
-			return true;
-		}
-	}
-	return false;
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (g_RecClient[i] && StrEqual(sName, g_sFileName[i]))
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 stock GetDisplayTime(char[] time, int size, int frames)
 {
-	decl String:sTime[16], String:sFrac[2][8];
-	FormatTime(sTime, sizeof(sTime), "%M:%S", RoundToFloor(GetGameFrameTime()*frames));
-	FloatToString(FloatFraction(GetGameFrameTime()*frames), sFrac[0], 8);
-	ExplodeString(sFrac[0], ".", sFrac, 2, 4);
-	Format(time, size, "%s,%s", sTime, sFrac[1]);
+    decl String:sTime[16], String:sFrac[2][8];
+    FormatTime(sTime, sizeof(sTime), "%M:%S", RoundToFloor(GetGameFrameTime()*frames));
+    FloatToString(FloatFraction(GetGameFrameTime()*frames), sFrac[0], 8);
+    ExplodeString(sFrac[0], ".", sFrac, 2, 4);
+    Format(time, size, "%s,%s", sTime, sFrac[1]);
 }
 
 stock int Clamp(x, min, max)
 {
-	if (x < min) x = min;
-	else if (x > max) x = max;
-	return x;
+    if (x < min) x = min;
+    else if (x > max) x = max;
+    return x;
 }
 
 //========================================================================================================================
@@ -1646,33 +2304,33 @@ stock int Clamp(x, min, max)
 
 stock bool:ST_Idle(client, bool:bType = false)
 {
-	if (IsPlayer(client) && !IsPlayerABot(client))
-	{
-		if (bType)
-		{
-			if (GetClientTeam(client) == 1)
-			{
-				SDKCall(g_hTakeOverBot, client);
-				return true;
-			}
-		}
-		else
-		{
-			if (GetClientTeam(client) == 2 && IsPlayerAlive(client))
-			{
-				for (new i = 1; i <= MaxClients; i++)
-				{
-					if (IsClientInGame(i) && !IsPlayerABot(i) && IsPlayerAlive(i) && client != i && GetClientTeam(i) == 2)
-					{
-						SDKCall(g_hGoAwayFromKeyboard, client);
-						PrintToChatAll("%N is now idle.", client);
-						return true;
-					}
-				}
-			}
-		}
-	}
-	return false;
+    if (IsPlayer(client) && !IsPlayerABot(client))
+    {
+        if (bType)
+        {
+            if (GetClientTeam(client) == 1)
+            {
+                SDKCall(g_hTakeOverBot, client);
+                return true;
+            }
+        }
+        else
+        {
+            if (GetClientTeam(client) == 2 && IsPlayerAlive(client))
+            {
+                for (new i = 1; i <= MaxClients; i++)
+                {
+                    if (IsClientInGame(i) && !IsPlayerABot(i) && IsPlayerAlive(i) && client != i && GetClientTeam(i) == 2)
+                    {
+                        SDKCall(g_hGoAwayFromKeyboard, client);
+                        PrintToChatAll("%N is now idle.", client);
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
 }
 
 //============================================================
@@ -1680,11 +2338,11 @@ stock bool:ST_Idle(client, bool:bType = false)
 
 stock bool:IsPlayer(client)
 {
-	if (client > 0 && client <= MaxClients && IsClientInGame(client))
-	{
-		return true;
-	}
-	return false;
+    if (client > 0 && client <= MaxClients && IsClientInGame(client))
+    {
+        return true;
+    }
+    return false;
 }
 
 //============================================================
@@ -1692,9 +2350,9 @@ stock bool:IsPlayer(client)
 
 stock bool:IsPlayerABot(client)
 {
-	if (GetEntityFlags(client) & FL_FAKECLIENT)
-	{
-		return true;
-	}
-	return false;
+    if (GetEntityFlags(client) & FL_FAKECLIENT)
+    {
+        return true;
+    }
+    return false;
 }
