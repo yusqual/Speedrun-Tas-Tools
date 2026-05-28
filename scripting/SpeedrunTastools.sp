@@ -282,14 +282,15 @@ public void ConVarChanged_STR_Trigger(ConVar convar, const char[] oldValue, cons
             Player_SetHasRun(client, true);
             Player_SetPlayingReplay(client, true);
             Player_SetRewindFrame(client, Player_GetStartFrame(client));
-            Player_SetIsRewinding(client, true);
+            Player_SetIsRewinding(client, false);
 
             int lineSmooth = Player_GetEndFrame(client) - Player_GetStartFrame(client);
             if (lineSmooth < 1) lineSmooth = 1;
             Player_SetSmoothLineDecrement(client, lineSmooth);
             g_bReplaySyncArmed[client] = true;
-            if (g_iReplaySyncStartTick == -1)
+            if (g_iReplaySyncStartTick == -1){
                 g_iReplaySyncStartTick = GetGameTickCount() + 3;
+            }
 
             STR_PrintMessageToAllClients("%N 开始播放Replay(Trigger).", client);
         }

@@ -1743,12 +1743,11 @@ stock void MR3_OpenMenu(int client)
             MR3_AddItem(menu, MR3_StepForward, "前进N帧");
             MR3_AddItem(menu, MR3_StepBack, "后退N帧");
             MR3_AddItem(menu, MR3_RecRewindSpeed, sSpeed);
-            MR3_AddItem(menu, MR3_RecJumpStart, "跳转至开头");
-            MR3_AddItem(menu, MR3_RecJumpEnd, "跳转至结尾");
             if (g_Menu_bLegacy[client])
                 MR3_AddItem(menu, MR3_Legacy_On, "Legacy模式: ON");
             else
                 MR3_AddItem(menu, MR3_Legacy_Off, "Legacy模式: OFF");
+            MR3_AddItem(menu, MR3_QuickSave, "快速保存");
             MR3_AddItem(menu, MR3_Exit, "退出菜单");
         }
         else
@@ -1758,6 +1757,7 @@ stock void MR3_OpenMenu(int client)
                 MR3_AddItem(menu, MR3_Legacy_On, "Legacy模式: ON");
             else
                 MR3_AddItem(menu, MR3_Legacy_Off, "Legacy模式: OFF");
+            MR3_AddItem(menu, MR3_QuickSave, "快速保存");
             MR3_AddItem(menu, MR3_Exit, "退出菜单");
         }
     }
@@ -1801,7 +1801,6 @@ stock void MR3_OpenMenu(int client)
         MR3_AddItem(menu, MR3_LoadFile, "加载录像文件");
         MR3_AddItem(menu, MR3_Tracker, "轨迹绘制");
         MR3_AddItem(menu, MR3_ClearTracker, "清除轨迹");
-        MR3_AddItem(menu, MR3_QuickSave, "快速保存");
         if (g_Menu_bLegacy[client])
             MR3_AddItem(menu, MR3_Legacy_On, "Legacy模式: ON");
         else
@@ -1871,7 +1870,39 @@ public int MenuHandler_MR3(Menu menu, MenuAction action, int param1, int param2)
 
             case MR3_QuickSave:
             {
-                FakeClientCommand(client, "st_mr_save");
+                if (g_RecClient[client] && g_Menu_bRecPaused[client])
+                {
+                    CloseHandle(g_RecFile[client]);
+
+                    decl String:sFilePath[128], String:sCopyPath[128];
+                    Format(sFilePath, sizeof(sFilePath), client > 1 && GetConVarBool(g_ConVar_FFA) ? "default_%d" : "default", client);
+                    BuildPath(Path_SM, sFilePath, sizeof(sFilePath), "%s/%s.txt", MR_DIR, sFilePath);
+
+                    Format(sCopyPath, sizeof(sCopyPath), client > 1 && GetConVarBool(g_ConVar_FFA) ? "quicksave_%d" : "quicksave", client);
+                    BuildPath(Path_SM, sCopyPath, sizeof(sCopyPath), "%s/%s.txt", MR_DIR, sCopyPath);
+
+                    if (FileExists(sFilePath))
+                    {
+                        Handle hFile = OpenFile(sFilePath, "rb");
+                        Handle hCopy = OpenFile(sCopyPath, "wb");
+                        if (hCopy != INVALID_HANDLE)
+                        {
+                            decl buffer[128];
+                            while (!IsEndOfFile(hFile))
+                                WriteFile(hCopy, buffer, ReadFile(hFile, buffer, sizeof(buffer), 2), 2);
+                            PrintToServer("[SM] Quick save by %N (recording paused)", client);
+                            ClientCommand(client, "playgamesound Buttons.snd4");
+                            delete hCopy;
+                        }
+                        delete hFile;
+                    }
+
+                    g_RecFile[client] = OpenFile(sFilePath, "a");
+                }
+                else
+                {
+                    FakeClientCommand(client, "st_mr_save");
+                }
             }
 
             case MR3_Legacy_On, MR3_Legacy_Off:
@@ -2119,7 +2150,10 @@ public int MenuHandler_MR3(Menu menu, MenuAction action, int param1, int param2)
 
             case MR3_Exit:
             {
-                ClientCommand(client, "playgamesound buttons/button11.wav");
+                if (g_RecClient[client] && g_Menu_bRecPaused[client])
+                    ForceStop(client);
+                else
+                    ClientCommand(client, "playgamesound buttons/button11.wav");
                 return 0;
             }
         }
