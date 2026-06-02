@@ -1045,6 +1045,36 @@ public void Player_SetIsFileLoaded(int client, bool value)
 //=============================================================================
 
 /**
+ * @brief 已加载的 Replay 文件名存储。
+ */
+char g_sLoadedFileName[MAXPLAYERS + 1][PLATFORM_MAX_PATH];
+
+/**
+ * @brief 获取玩家已加载的 Replay 文件名。
+ *
+ * @param client   客户端索引。
+ * @param buffer   输出缓冲区。
+ * @param maxlen   缓冲区大小。
+ */
+public void Player_GetLoadedFileName(int client, char[] buffer, int maxlen)
+{
+    strcopy(buffer, maxlen, g_sLoadedFileName[client]);
+}
+
+/**
+ * @brief 设置玩家已加载的 Replay 文件名。
+ *
+ * @param client     客户端索引。
+ * @param filename   文件名（不含路径）。
+ */
+public void Player_SetLoadedFileName(int client, const char[] filename)
+{
+    strcopy(g_sLoadedFileName[client], PLATFORM_MAX_PATH, filename);
+}
+
+//=============================================================================
+
+/**
  * @brief 闲置/接管标记位。
  */
 int g_iIdleFlags[MAXPLAYERS + 1];
@@ -1150,6 +1180,7 @@ public void Player_ResetAllReplayState(int client)
     Player_SetAngleSmooth(client, 0);
     Player_SetSmoothLineDecrement(client, 0);
     Player_SetIsFileLoaded(client, false);
+    g_sLoadedFileName[client][0] = '\0';
     Player_SetTraceLine(client, 0);
     Player_ClearIdleFlags(client);
     Player_SetPlaybackButtons(client, 0);

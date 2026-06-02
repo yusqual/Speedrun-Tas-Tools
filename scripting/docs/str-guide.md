@@ -309,19 +309,74 @@ addons/sourcemod/data/str/<地图名>/<文件名>.STR
 
 ## 9. VScript Forwards
 
-插件提供两个全局 Forward 供第三方插件使用：
+插件提供三个全局 Forward 供第三方插件和 VScript 使用：
 
 ```sp
-// 播放每 tick 触发
-forward void OnPlayTick(int client, int frame);
+// 回放每 tick 触发
+forward void OnPlayTick(int client, int frame, const char[] filename);
 
 // 录制每 tick 触发
 forward void OnRecordTick(int client, int frame);
+
+// 回放结束时触发
+forward void OnPlayTickEnd(int client, const char[] filename);
 ```
 
-STR 自身也会对回放中的 client 调用 VScript 函数（如果存在）：
+STR 自身也会对 client 调用 VScript 函数（如果存在）：
+
 ```squirrel
-if ("OnPlayTick" in getroottable()) OnPlayTick(self, curframe);
+// 回放每帧
+if ("OnPlayTick" in getroottable()) OnPlayTick(self, curframe, "filename");
+
+// 录制每帧
+if ("OnRecordTick" in getroottable()) OnRecordTick(self, curframe);
+
+// 回放结束（自然结束 / stopFrame 停止 / 手动重置）
+if ("OnPlayTickEnd" in getroottable()) OnPlayTickEnd(self, "filename");
+```
+
+### 参数说明
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `client` | `int` | 客户端索引 |
+| `frame` | `int` | 当前帧号 |
+| `filename` | `string` | 已加载的 .STR 文件名（不含路径），如 `"B2.STR"` |
+
+### 触发时机
+
+| Forward | VScript | 触发条件 |
+|---------|---------|----------|
+| `OnPlayTick` | `OnPlayTick(self, frame, filename)` | 回放中每 tick |
+| `OnRecordTick` | `OnRecordTick(self, frame)` | 录制中每 tick |
+| `OnPlayTickEnd` | `OnPlayTickEnd(self, filename)` | 回放自然结束、到达 stopFrame、或手动 `sm_resetreplay` |
+
+### VScript 使用示例
+
+```squirrel
+// 在 map 脚本或 vs_st_speedrun.nut 中定义即可，STR 会自动调用
+
+::OnPlayTick <- function(hPlayer, frame, filename)
+{
+    // 回放每帧触发 — 可用于同步 UI、日志、外部计时器等
+    printl(format("[STR] Playing %s — frame %d", filename, frame));
+}
+
+::OnPlayTickEnd <- function(hPlayer, filename)
+{
+    // 回放结束时触发 — 可用于自动加载下一个文件、切换模式等
+    printl(format("[STR] Playback of %s finished", filename));
+
+    // 例如：链式加载下一个分段
+    // ST_STR_LoadFile(hPlayer, "B3.STR");
+    // ST_STR(hPlayer, 1);
+}
+
+::OnRecordTick <- function(hPlayer, frame)
+{
+    // 录制每帧触发 — 可用于监控录制进度、实时保存等
+    printl(format("[STR] Recording — frame %d", frame));
+}
 ```
 
 ---

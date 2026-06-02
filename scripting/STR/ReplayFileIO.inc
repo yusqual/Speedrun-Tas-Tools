@@ -44,6 +44,16 @@ public bool LoadReplayFromFile(int client, const char[] filepath)
     }
     
     Player_SetIsFileLoaded(client, true);
+
+    // 从完整路径中提取文件名
+    char filename[PLATFORM_MAX_PATH];
+    int lastSlash = FindCharInString(filepath, '/', true);
+    if (lastSlash != -1)
+        strcopy(filename, sizeof(filename), filepath[lastSlash + 1]);
+    else
+        strcopy(filename, sizeof(filename), filepath);
+    Player_SetLoadedFileName(client, filename);
+
     return true;
 }
 

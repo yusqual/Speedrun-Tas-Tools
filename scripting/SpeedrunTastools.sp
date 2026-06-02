@@ -89,6 +89,7 @@ Handle g_hGoAwayFromKeyboard;
 // Forward 句柄
 Handle g_hOnPlayTick;
 Handle g_hOnRecordTick;
+Handle g_hOnPlayTickEnd;
 
 //=============================================================================
 // 玩家状态管理（所有 getter/setter）
@@ -192,8 +193,9 @@ public void OnPluginStart()
     HookConVarChange(g_ConVar_STR_TriggerUnPause,ConVarChanged_STR_Trigger);
 
     // 全局 Forward
-    g_hOnPlayTick   = CreateGlobalForward("OnPlayTick", ET_Ignore, Param_Cell, Param_Cell);
+    g_hOnPlayTick   = CreateGlobalForward("OnPlayTick", ET_Ignore, Param_Cell, Param_Cell, Param_String);
     g_hOnRecordTick = CreateGlobalForward("OnRecordTick", ET_Ignore, Param_Cell, Param_Cell);
+    g_hOnPlayTickEnd = CreateGlobalForward("OnPlayTickEnd", ET_Ignore, Param_Cell, Param_String);
     
     // 事件钩子
     HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
@@ -250,6 +252,7 @@ public void ConVarChanged_STR_Trigger(ConVar convar, const char[] oldValue, cons
                 if (LoadReplayFromFile(client, filepath))
                 {
                     Player_SetHasRun(client, true);
+                    Player_SetLoadedFileName(client, sParts[1]);
                     STR_PrintMessageToAllClients("%N 已加载Replay(Trigger).", client);
                 }
             }

@@ -58,14 +58,33 @@ public void ResetPlayerReplaySegment(int client)
 {
     if (client < 1) return;
     if (!IsClientInGame(client)) return;
-    
+
+    // 如果玩家正在播放 Replay，在重置前触发 OnPlayTickEnd
+    if (Player_GetIsPlayingReplay(client) && g_hOnPlayTickEnd != INVALID_HANDLE)
+    {
+        char sFileName[PLATFORM_MAX_PATH];
+        Player_GetLoadedFileName(client, sFileName, sizeof(sFileName));
+        Call_StartForward(g_hOnPlayTickEnd);
+        Call_PushCell(client);
+        Call_PushString(sFileName);
+        Call_Finish();
+
+        char sKeyValue[512];
+        char sSafeFileName[PLATFORM_MAX_PATH];
+        strcopy(sSafeFileName, sizeof(sSafeFileName), sFileName);
+        ReplaceString(sSafeFileName, sizeof(sSafeFileName), "\"", "'");
+        Format(sKeyValue, sizeof(sKeyValue), "if (\"OnPlayTickEnd\" in getroottable()) OnPlayTickEnd(self, \"%s\")", sSafeFileName);
+        SetVariantString(sKeyValue);
+        AcceptEntityInput(client, "RunScriptCode");
+    }
+
     Player_ResetAllReplayState(client);
-    
+
     if (IsPlayingOnTeam(client))
     {
         SetEntityMoveType(client, MOVETYPE_WALK);
     }
-    
+
     RequestFrame(ResetButton, client);
 }
 

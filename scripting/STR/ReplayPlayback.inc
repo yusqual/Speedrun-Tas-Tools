@@ -439,6 +439,27 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
         else if (curframe == stopFrame)
         {
             // 播放到指定帧停止
+            // 在重置状态前触发 OnPlayTickEnd
+            if (g_hOnPlayTickEnd != INVALID_HANDLE)
+            {
+                char sFileName[PLATFORM_MAX_PATH];
+                Player_GetLoadedFileName(client, sFileName, sizeof(sFileName));
+                Call_StartForward(g_hOnPlayTickEnd);
+                Call_PushCell(client);
+                Call_PushString(sFileName);
+                Call_Finish();
+            }
+
+            char sKeyValue[512];
+            char sFileName[PLATFORM_MAX_PATH];
+            char sSafeFileName[PLATFORM_MAX_PATH];
+            Player_GetLoadedFileName(client, sFileName, sizeof(sFileName));
+            strcopy(sSafeFileName, sizeof(sSafeFileName), sFileName);
+            ReplaceString(sSafeFileName, sizeof(sSafeFileName), "\"", "'");
+            Format(sKeyValue, sizeof(sKeyValue), "if (\"OnPlayTickEnd\" in getroottable()) OnPlayTickEnd(self, \"%s\")", sSafeFileName);
+            SetVariantString(sKeyValue);
+            AcceptEntityInput(client, "RunScriptCode");
+
             Player_ResetAllReplayState(client);
             ResetButton(client);
             if (IsClientInGame(client) && GetClientTeam(client) != 1)
@@ -560,14 +581,22 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
         // 触发 OnPlayTick 转发
         if (hOnPlayTick != INVALID_HANDLE)
         {
+            char sFileName[PLATFORM_MAX_PATH];
+            Player_GetLoadedFileName(client, sFileName, sizeof(sFileName));
             Call_StartForward(hOnPlayTick);
             Call_PushCell(client);
             Call_PushCell(curframe);
+            Call_PushString(sFileName);
             Call_Finish();
         }
-        
-        char sKeyValue[128];
-        Format(sKeyValue, sizeof(sKeyValue), "if (\"OnPlayTick\" in getroottable()) OnPlayTick(self, %d)", curframe);
+
+        char sKeyValue[512];
+        char sFileName[PLATFORM_MAX_PATH];
+        char sSafeFileName[PLATFORM_MAX_PATH];
+        Player_GetLoadedFileName(client, sFileName, sizeof(sFileName));
+        strcopy(sSafeFileName, sizeof(sSafeFileName), sFileName);
+        ReplaceString(sSafeFileName, sizeof(sSafeFileName), "\"", "'");
+        Format(sKeyValue, sizeof(sKeyValue), "if (\"OnPlayTick\" in getroottable()) OnPlayTick(self, %d, \"%s\")", curframe, sSafeFileName);
         SetVariantString(sKeyValue);
         AcceptEntityInput(client, "RunScriptCode");
         
@@ -585,6 +614,27 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
         {
             Player_SetRewindFrame(client, length - 1);
             Player_SetIsRewinding(client, false);
+
+            // 在重置状态前触发 OnPlayTickEnd
+            if (g_hOnPlayTickEnd != INVALID_HANDLE)
+            {
+                char sEndFileName[PLATFORM_MAX_PATH];
+                Player_GetLoadedFileName(client, sEndFileName, sizeof(sEndFileName));
+                Call_StartForward(g_hOnPlayTickEnd);
+                Call_PushCell(client);
+                Call_PushString(sEndFileName);
+                Call_Finish();
+            }
+
+            char sEndKeyValue[512];
+            char sEndFileName[PLATFORM_MAX_PATH];
+            char sEndSafeFileName[PLATFORM_MAX_PATH];
+            Player_GetLoadedFileName(client, sEndFileName, sizeof(sEndFileName));
+            strcopy(sEndSafeFileName, sizeof(sEndSafeFileName), sEndFileName);
+            ReplaceString(sEndSafeFileName, sizeof(sEndSafeFileName), "\"", "'");
+            Format(sEndKeyValue, sizeof(sEndKeyValue), "if (\"OnPlayTickEnd\" in getroottable()) OnPlayTickEnd(self, \"%s\")", sEndSafeFileName);
+            SetVariantString(sEndKeyValue);
+            AcceptEntityInput(client, "RunScriptCode");
 
             // 在所有状态变量之前释放按键，防止最后一帧注入的
             // +attack/+attack2 等卡死（尤其 +attack 导致左键失效）
