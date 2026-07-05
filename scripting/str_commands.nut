@@ -1,30 +1,5 @@
 //Squirrel
-
-/*
-STR 命令的 VScript 封装 —— 同步调用接口。
-
-用法（Squirrel 脚本中）：
-  ::ST_STR(hPlayer, eMode)       — eMode: 0=录制, 1=播放, 2=重置
-  ::ST_STRStop(hPlayer)          — 停止/重置
-  ::ST_STR_Save(hPlayer)         — 保存录制的 Replay
-  ::ST_STR_Pause(hPlayer)        — 暂停播放
-  ::ST_STR_UnPause(hPlayer)      — 取消暂停
-  ::ST_STR_LoadFile(hPlayer, sFileName) — 加载 Replay 文件
-  // 设置:
-  ::ST_STR_SetPlayToRecord(bEnable)
-  ::ST_STR_SetOnlySetVel(bEnable)
-  ::ST_STR_SetShowFrame(bEnable)
-  ::ST_STR_SetReplayDebug(bEnable)
-  ::ST_STR_SetPlayWhenIncapped(bEnable)
-  ::ST_STR_SetPosMap(x, y, z)
-
-所有函数均使用 Convars.SetValue() 实现，SourceMod 侧的
-ConVarChanged 回调在当前帧同步执行，没有 SendToConsole 的一帧延迟。
-
-注意：
-  使用 ST_STR_Play 之前必须先调用 ST_STR_LoadFile 加载文件，
-  并设置好 StartFrame / EndFrame（否则会使用默认值 0）。
-*/
+// STR VScript API 封装。完整文档见 scripting/docs/str-guide.md
 
 // 清理上一轮遗留的 STR 回调，避免脚本移除函数后 mp_restartgame 仍保留旧定义
 if ("OnPlayTick" in getroottable()) delete getroottable()["OnPlayTick"];

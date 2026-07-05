@@ -12,7 +12,7 @@
 3. [控制台命令](#3-控制台命令)
 4. [ConVar 配置项](#4-convars-配置项)
 5. [菜单系统](#5-菜单系统)
-6. [VScript API（str_commands.nut）](#6-VScript API（str_commands.nut）)
+6. [VScript API](#6-vscript-api)
 7. [STR 文件格式](#7-str-文件格式)
 8. [Debug 显示](#8-debug-显示)
 9. [VScript Forwards](#9-vscript-forwards)
@@ -148,6 +148,7 @@ VScript 端需将 `str_commands.nut` 放入 `scripts/vscripts/` 目录，并在�
 | `str_trigger_pause` | `client索引` | 触发暂停 |
 | `str_trigger_unpause` | `client索引` | 触发取消暂停 |
 | `str_trigger_load` | `client;文件名` | 触发加载文件 |
+| `str_trigger_switchslot` | `client;slot` | 触发切换武器槽位（slot: 1-5）|
 
 ---
 
@@ -188,9 +189,11 @@ Debug 子菜单使用 VScript HUD 在屏幕上实时显示逐帧调试信息：
 
 ---
 
-## 6. VScript API（str_commands.nut）
+## 6. VScript API
 
-### 6.1 引入方式
+### 6.1 str_commands.nut
+
+#### 6.1.1 引入方式
 
 在 map 脚本中添加：
 
@@ -198,7 +201,7 @@ Debug 子菜单使用 VScript HUD 在屏幕上实时显示逐帧调试信息：
 IncludeScript("str_commands");
 ```
 
-### 6.2 核心操作
+#### 6.1.2 核心操作
 
 ```squirrel
 // 录制 / 播放 / 重置
@@ -218,9 +221,12 @@ ST_STR_UnPause(hPlayer);
 
 // 加载文件
 ST_STR_LoadFile(hPlayer, "文件名");  // 例如: ST_STR_LoadFile(hPlayer, "B2.STR")
+
+// 切换武器槽位
+ST_STR_SwitchSlot(hPlayer, 1); // slot 1-5: 主武器/副武器/投掷物/医疗包/药
 ```
 
-### 6.3 ConVar 设置
+#### 6.1.3 ConVar 设置
 
 ```squirrel
 ST_STR_SetPlayToRecord(true);   // 回放结束后自动转入录制
@@ -231,13 +237,13 @@ ST_STR_SetPlayWhenIncapped(true); // 倒地允许回放
 ST_STR_SetPosMap(x, y, z);     // 设置坐标映射偏移
 ```
 
-### 6.4 参数约定
+#### 6.1.4 参数约定
 
 - `hPlayer` — 玩家句柄。为 `null` 时默认取 `PlayerInstanceFromIndex(1)` (主机)
 - `sFileName` — 仅文件名，不含路径。如 `"B2.STR"`
 - 所有操作在同一帧同步执行，无延迟
 
-### 6.5 典型用法
+#### 6.1.5 典型用法
 
 ```squirrel
 // 1. 加载文件并开始回放
@@ -253,6 +259,40 @@ ST_STRStop(null);
 
 // 4. 设置仅速度模式（不改变位置和视角）
 ST_STR_SetOnlySetVel(true);
+```
+
+### 6.2 str_extensions.nut
+
+基于 STR 和 Speedrunner Tools 模组封装的工具函数，需额外引入：
+
+```squirrel
+IncludeScript("str_extensions");
+```
+
+依赖：`str_commands.nut`、Speedrunner Tools 模组（`ST_Idle`、`SpawnTrigger`）。
+
+#### 6.2.1 ST_TriggerTeleport
+
+闲置玩家 → 在目标位置生成 trigger → 玩家碰到后接管、输出耗时、执行回调。
+
+```squirrel
+ST_TriggerTeleport(hPlayer, vecPos, fCallback);
+```
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `hPlayer` | handle | 目标玩家句柄 |
+| `vecPos` | Vector | trigger 生成位置 |
+| `fCallback` | function | `function(hPlayer, fElapsedSec)`，可为 null |
+
+**示例：**
+
+```squirrel
+ST_TriggerTeleport(hPlayer, Vector(1000, 2000, 100), function(hPlayer, fTime) {
+    printl("Hit trigger in " + fTime + " seconds");
+    ST_STR_LoadFile(hPlayer, "next.STR");
+    ST_STR(hPlayer, 1);
+});
 ```
 
 ---

@@ -1,37 +1,8 @@
 //Squirrel
-
-/*
-STR 扩展函数库 —— 基于 Speedrunner Tools 模组封装的工具函数。
-
-引入方式（在 vs_st_speedrun.nut 或 map 脚本中）：
-  IncludeScript("str_extensions");
-
-依赖：
-  - str_commands.nut        （STR VScript API）
-  - Speedrunner Tools 模组  （ST_Idle, SpawnTrigger 等）
-
-所有函数使用 :: 全局作用域。
-*/
+// STR 扩展函数库。完整文档见 scripting/docs/str-guide.md §6.6
 
 //====================================================================
-// ST_TriggerTeleport
-//
-// 闲置目标玩家 → 在目标位置生成 trigger → 玩家碰到 trigger 后
-// 接管玩家，输出耗时，执行回调。
-//
-// 参数：
-//   hPlayer   — 玩家句柄
-//   vecPos    — trigger 生成位置 (Vector)
-//   fCallback — 回调函数 function(hPlayer, fElapsedSeconds)
-//
-// 示例：
-//   ST_TriggerTeleport(hPlayer, Vector(1000, 2000, 100),
-//       function(hPlayer, fTime) {
-//           printl("Reached in " + fTime + " s");
-//           ST_STR_LoadFile(hPlayer, "next.STR");
-//           ST_STR(hPlayer, 1);
-//       }
-//   );
+// ST_TriggerTeleport — 闲置玩家 → trigger 传送 → 接管回调。文档见 str-guide.md §6.6
 //====================================================================
 
 ::ST_TriggerTeleport <- function(hPlayer, vecPos, fCallback = null)

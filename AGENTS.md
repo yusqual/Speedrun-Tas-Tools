@@ -38,30 +38,6 @@
 native bool IsClientAdmin(int client, int &flags);
 ```
 
-### Python 示例（Doxygen 指令）
-``` python
-## @brief 计算非负整数的阶乘。
-#  @param n: 需要计算阶乘的整数（必须 >= 0）。
-#  @return n 的阶乘值，当 n 为 0 时返回 1。
-#  @throws ValueError 当 n 为负数时抛出。
-def factorial(n: int) -> int:
-    ...
-```
-
-### TypeScript 示例
-``` typescript
-/**
- * @brief 将用户输入字符串转换为安全显示格式。
- * 对字符串进行 HTML 转义，防止 XSS 攻击。
- *
- * @param input 用户输入的原始字符串。
- * @return 转义后的安全字符串。
- */
-function sanitize(input: string): string {
-    // ...
-}
-```
-
 ### 代码质量补充要求
 - 不要留下没有具体说明和关联任务编号的 TODO 注释。
 
