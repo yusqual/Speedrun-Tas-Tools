@@ -81,6 +81,7 @@ Handle g_ConVar_STR_TriggerSave;
 Handle g_ConVar_STR_TriggerLoad;
 Handle g_ConVar_STR_TriggerPause;
 Handle g_ConVar_STR_TriggerUnPause;
+Handle g_ConVar_STR_TriggerSwitchSlot;
 
 // SDKCall 句柄
 Handle g_hTakeOverBot;
@@ -183,6 +184,8 @@ public void OnPluginStart()
         "VScript trigger: pause replay for client. Auto-resets to 0.");
     g_ConVar_STR_TriggerUnPause = CreateConVar("str_trigger_unpause", "0",
         "VScript trigger: unpause replay for client. Auto-resets to 0.");
+    g_ConVar_STR_TriggerSwitchSlot = CreateConVar("str_trigger_switchslot", "0",
+        "VScript trigger: switch weapon slot. Format 'client;slot' (slot: 1-5). Auto-resets to 0.");
 
     HookConVarChange(g_ConVar_STR_TriggerPlay,   ConVarChanged_STR_Trigger);
     HookConVarChange(g_ConVar_STR_TriggerRecord, ConVarChanged_STR_Trigger);
@@ -191,6 +194,7 @@ public void OnPluginStart()
     HookConVarChange(g_ConVar_STR_TriggerLoad,   ConVarChanged_STR_Trigger);
     HookConVarChange(g_ConVar_STR_TriggerPause,  ConVarChanged_STR_Trigger);
     HookConVarChange(g_ConVar_STR_TriggerUnPause,ConVarChanged_STR_Trigger);
+    HookConVarChange(g_ConVar_STR_TriggerSwitchSlot, ConVarChanged_STR_TriggerSwitchSlot);
 
     // 全局 Forward
     g_hOnPlayTick   = CreateGlobalForward("OnPlayTick", ET_Ignore, Param_Cell, Param_Cell, Param_String);
@@ -344,6 +348,32 @@ public void ConVarChanged_STR_Trigger(ConVar convar, const char[] oldValue, cons
         STR_PrintMessageToAllClients("%N 的Replay已取消暂停(Trigger).", client);
     }
 
+    SetConVarString(convar, "0");
+}
+
+//=============================================================================
+// VScript 触发切换武器槽位
+// 格式: "client;slot" (slot: 1-5, 映射为引擎槽位 0-4)
+//=============================================================================
+
+public void ConVarChanged_STR_TriggerSwitchSlot(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+    char sParts[2][8];
+    if (ExplodeString(newValue, ";", sParts, 2, 8) == 2)
+    {
+        int client = StringToInt(sParts[0]);
+        int slot = StringToInt(sParts[1]);
+        if (client >= 1 && client <= MaxClients && IsClientInGame(client) && slot >= 1 && slot <= 5)
+        {
+            int weapon = GetPlayerWeaponSlot(client, slot - 1);
+            if (weapon != -1)
+            {
+                char sClassName[64];
+                GetEntityClassname(weapon, sClassName, sizeof(sClassName));
+                FakeClientCommand(client, "use %s", sClassName);
+            }
+        }
+    }
     SetConVarString(convar, "0");
 }
 

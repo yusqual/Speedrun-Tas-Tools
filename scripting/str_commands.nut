@@ -26,6 +26,11 @@ ConVarChanged 回调在当前帧同步执行，没有 SendToConsole 的一帧延
   并设置好 StartFrame / EndFrame（否则会使用默认值 0）。
 */
 
+// 清理上一轮遗留的 STR 回调，避免脚本移除函数后 mp_restartgame 仍保留旧定义
+if ("OnPlayTick" in getroottable()) delete getroottable()["OnPlayTick"];
+if ("OnPlayTickEnd" in getroottable()) delete getroottable()["OnPlayTickEnd"];
+if ("OnRecordTick" in getroottable()) delete getroottable()["OnRecordTick"];
+
 //====================================================================
 // 基础操作（同步 — Convars.SetValue → HookConVarChange）
 //====================================================================
@@ -87,6 +92,16 @@ ConVarChanged 回调在当前帧同步执行，没有 SendToConsole 的一帧延
     if (hPlayer == null) hPlayer = PlayerInstanceFromIndex(1);
     if (!IsPlayer(hPlayer)) return;
     Convars.SetValue("str_trigger_unpause", hPlayer.GetEntityIndex());
+}
+
+//============================================================
+//============================================================
+
+::ST_STR_SwitchSlot <- function(hPlayer = null, iSlot = 1)
+{
+    if (hPlayer == null) hPlayer = PlayerInstanceFromIndex(1);
+    if (!IsPlayer(hPlayer) || iSlot < 1 || iSlot > 5) return;
+    Convars.SetValue("str_trigger_switchslot", hPlayer.GetEntityIndex() + ";" + iSlot);
 }
 
 //============================================================
