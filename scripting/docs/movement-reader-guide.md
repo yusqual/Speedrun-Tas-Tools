@@ -1,3 +1,11 @@
+---
+title: "L4D2 MR说明文档"
+date: 2026-07-06 14:00:01
+tags: l4d2
+categories: "其他"
+permalink: "games/movement_reader_guide.html"
+---
+
 # Movement Reader (sm_amovement_reader) 使用指南
 
 **版本**: 1.5.23  

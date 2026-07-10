@@ -1,3 +1,11 @@
+---
+title: "L4D2 ST-API文档"
+date: 2026-07-06 14:00:01
+tags: l4d2
+categories: "其他"
+permalink: "games/st_api_reference.html"
+---
+
 # ST Squirrel 函数参考
 
 **版本**: 5.5 (VScript) / 1.4.20 (SourceMod 主插件)  

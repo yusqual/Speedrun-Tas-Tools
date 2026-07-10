@@ -1,3 +1,11 @@
+---
+title: "L4D2 ST说明文档"
+date: 2026-07-06 14:00:01
+tags: l4d2
+categories: "其他"
+permalink: "games/speedrunner_tools_guide.html"
+---
+
 # Speedrunner Tools 5.5.18 使用指南
 
 **版本**: 5.5 (VScript) / 1.4.20 (SourceMod 主插件)  

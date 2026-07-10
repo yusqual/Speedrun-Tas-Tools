@@ -1,3 +1,11 @@
+---
+title: "L4D2 STR说明文档"
+date: 2026-07-06 14:00:01
+tags: l4d2
+categories: "其他"
+permalink: "games/str_guide.html"
+---
+
 # STR (Speedrun TAS Tools) 使用文档
 
 **版本**: 2.2  
