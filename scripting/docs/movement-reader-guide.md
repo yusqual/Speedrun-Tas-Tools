@@ -376,7 +376,7 @@ st_mr_tracker_clear        # 清除所有路径
 
 回放结束时触发:
 
-```c++
+```CPP
 function OnPlayEnd(self, filename)
 {
     // filename: 回放的文件名
@@ -387,7 +387,7 @@ function OnPlayEnd(self, filename)
 
 每帧回放时触发:
 
-```c++
+```CPP
 function OnPlayLine(self, filename, tick, buttons)
 {
     // filename: 回放的文件名

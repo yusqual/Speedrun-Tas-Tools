@@ -379,7 +379,7 @@ Infected killed .........:10
 
 ### 7.3 物品生成 (SpawnItem)
 
-```lua
+```CPP
 SpawnItem("item0", Vector(x, y, z), Vector(pitch, yaw, roll), count, targetname, removeRadius)
 ```
 
@@ -423,7 +423,7 @@ SpawnItem("item0", Vector(x, y, z), Vector(pitch, yaw, roll), count, targetname,
 
 ### 7.4 僵尸生成
 
-```lua
+```CPP
 // 简易生成 (仅限地图内可用)
 SpawnZombie("smoker", Vector(x, y, z), idle)
 SpawnZombie("hunter", Vector(x, y, z), idle)
@@ -452,7 +452,7 @@ SpawnZombieForCB(pos, ang, startTime, hPlayer, bNotSolid, name)
 
 ### 7.5 Trigger 生成
 
-```lua
+```CPP
 SpawnTrigger("name", pos, maxs, mins, callbackFunc, type, output, classname)
 ```
 
@@ -462,7 +462,7 @@ SpawnTrigger("name", pos, maxs, mins, callbackFunc, type, output, classname)
 
 自动攻击系统用于速通中的爆炸物 Boost:
 
-```lua
+```CPP
 // AF1: 榴弹发射器 Boost
 AutoFire(hPlayer, vecAng, vecPos, bLoop, bUp, fRadius, hClient, delayTime, data, method3D, vecVel)
 
@@ -482,7 +482,7 @@ AFStop()
 
 ### 7.7 其他 API
 
-```lua
+```CPP
 // 玩家控制
 ST_Idle(hPlayer, bMode)           // 闲置/接管 Bot
 ST_PlayerReplace(h1, h2)          // 交换角色
@@ -513,7 +513,7 @@ OnGameFrame(funcName, interval, duration)    // 创建定时器
 
 ### 7.8 SM 命令 VScript 封装
 
-```lua
+```CPP
 ClientCommand(hPlayer, "command")     // 让玩家执行命令
 SetClientName(hPlayer, "name")        // 改名
 SetAmmo(hPlayer, slot, clip, ammo, upgrade)  // 设置弹药
@@ -542,7 +542,7 @@ scripts/vscripts/vs_st_speedrun_commentary.nut
 
 ### 8.1 基础脚本模板
 
-```lua
+```CPP
 // 设置游戏参数
 Convars.SetValue("mp_gamemode", "coop");
 Convars.SetValue("z_difficulty", "Easy");
@@ -599,7 +599,7 @@ HUDLoad(0.0);                         // 加载 HUD (可指定起始时间)
 
 ### 8.2 ST_MR 用法
 
-```lua
+```CPP
 // 录制/回放移动 (需要安装 Movement Reader 插件)
 ST_MR(hPlayer, 0, "filename");      // 录制
 ST_MR(hPlayer, 1, "filename");      // 回放
@@ -611,7 +611,7 @@ ST_MRStop(hPlayer);                  // 停止指定玩家
 
 ### 8.3 HUD 更新回调
 
-```lua
+```CPP
 function OnGameEvent_scriptedmode_reloadhud(...)
 {
     local time = g_STLib.Vars.HUD.Fields.timer_sec.dataval;
@@ -628,7 +628,7 @@ function OnGameEvent_scriptedmode_reloadhud(...)
 
 `Timer()` 函数在脚本中调用，提供三段式倒计时:
 
-```lua
+```CPP
 Timer();                        // 使用 g_ST.timer_value (默认 3 秒)
 // 倒计时过程:
 // 3 → 2 → 1 → Inventory() 或 Inventory2() → SpeedrunStart()
@@ -697,7 +697,7 @@ Timer();                        // 使用 g_ST.timer_value (默认 3 秒)
 
 监听 Bot 的按键输入:
 
-```lua
+```CPP
 CheckMoving(3.0);               // 监听 3 秒
 CheckMoving(5.0, true);         // 通过聊天输出
 ```
@@ -706,7 +706,7 @@ CheckMoving(5.0, true);         // 通过聊天输出
 
 监听特感/普通感染者数量:
 
-```lua
+```CPP
 MobListener(flags, mobMax);
 // flags: 1=HUD, 2=CHAT, 4=CONSOLE
 ```
@@ -754,7 +754,7 @@ Speedrunner Tools 提供了多层级的钩子系统，涵盖 VScript 全局回�
 | `OnEntityDestroyed` | `(hEntity)` | 实体销毁时调用 (需 `st_allow_sdkhooks 1`) |
 
 **示例**:
-```lua
+```CPP
 ::OnPlayEnd <- function(hPlayer, sFileName)
 {
     if (sFileName == "default")
@@ -782,7 +782,7 @@ Speedrunner Tools 提供了多层级的钩子系统，涵盖 VScript 全局回�
 **调用顺序**: `Timer()` 倒计时 → `Inventory()` 或 `Inventory2()` → `SpeedrunStart()`
 
 **示例**:
-```lua
+```CPP
 function Inventory2()
 {
     local hPlayer = Ent("!nick");
@@ -816,7 +816,7 @@ function Event()
 - `OnGameEvent_player_jump_apex`: `event.userid` — 玩家 UserID
 
 **示例**:
-```lua
+```CPP
 function OnGameEvent_weapon_fire(event)
 {
     local hPlayer = GetPlayerFromUserID(event.userid);
@@ -848,7 +848,7 @@ function OnGameEvent_scriptedmode_reloadhud(...)
 SourceMod forward 的触发机制: SM 插件调用 `CreateGlobalForward()`，然后通过 `AcceptEntityInput(hPlayer, "RunScriptCode")` 调用 VScript 中对应的全局函数。因此 VScript 端的 `OnXxx` 钩子定义在 `getroottable()` 中 (以 `::` 前缀)。
 
 实现方式 (以 OnAutoCB 为例):
-```c++
+```CPP
 // sm_autocb.sp
 Call_StartForward(g_hOnAutoCB);
 Call_PushCell(client);

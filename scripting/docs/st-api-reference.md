@@ -106,7 +106,7 @@ ST API 核心库表。定义在 `speedrunner_tools.nut:7-56`。
 **返回值**: 生成的 entity handle。
 
 **示例**:
-```lua
+```CPP
 SpawnItem("item4", Vector(100, 200, 50));               // 生成手枪
 SpawnItem("item9", Vector(100, 200, 50), Vector(0, 90, 0), 3); // 3 个土制
 SpawnItem("item38", Vector(...), null, 1, "my_katana");  // 生成名为 my_katana 的武士刀
@@ -131,7 +131,7 @@ SpawnItem("item38", Vector(...), null, 1, "my_katana");  // 生成名为 my_kata
 **返回值**: 生成的 entity handle，失败返回 null。
 
 **示例**:
-```lua
+```CPP
 SpawnZombie("tank", Vector(100, 200, 50));              // 生成 Tank
 SpawnZombie("hunter", Vector(...), true);                // 生成闲置 Hunter
 SpawnZombie("infected");                                 // 生成普通感染者
@@ -156,7 +156,7 @@ SpawnZombie("infected");                                 // 生成普通感染�
 - `sName = "tank"` 或 `"spitter"` 时，会设置 `cm_AggressiveSpecials`
 
 **示例**:
-```lua
+```CPP
 SpawnZombieEx("tank", Vector(...), Vector(0, 180, 0), true);   // 生成面向 180° 的 Tank
 SpawnZombieEx("spitter", Vector(...), null, true, 1.0);         // 1 秒后生成 Spitter
 SpawnZombieEx("infected", Vector(...));                          // 生成随机 common
@@ -205,7 +205,7 @@ SpawnZombieEx("infected", Vector(...));                          // 生成随机
 | 32 | FALLEN_LYING | 躺姿 |
 
 **示例**:
-```lua
+```CPP
 SpawnCommon("common_male_fallen_survivor", Vector(...));           // 堕落幸存者
 SpawnCommon("common_male_ceda", Vector(...), Vector(0, 90, 0));   // 指定角度
 SpawnCommon(null, Vector(...), null, FALLEN_SIT | FALLEN_PILLS);  // 坐姿携带药丸
@@ -231,7 +231,7 @@ SpawnCommon(null, Vector(...), null, FALLEN_SIT | FALLEN_PILLS);  // 坐姿携�
 **返回值**: trigger entity handle。
 
 **示例**:
-```lua
+```CPP
 SpawnTrigger("area1", Vector(0, 0, 0), Vector(100, 100, 200), Vector(-100, -100, 0));
 SpawnTrigger("finish", Vector(...), null, null, "OnFinish", TR_CLIENTS, "OnStartTouch,OnEndTouch");
 ```
@@ -252,7 +252,7 @@ SpawnTrigger("finish", Vector(...), null, null, "OnFinish", TR_CLIENTS, "OnStart
 
 **返回值**: 移除的物品数量。
 
-```lua
+```CPP
 RemoveItem("item9");    // 移除所有土制炸弹
 RemoveItem();           // 移除地图上所有 ST 物品
 ```
@@ -281,7 +281,7 @@ RemoveItem();           // 移除地图上所有 ST 物品
 | `hPlayer` | entity | 玩家 handle |
 | `slot` | int | 槽位 (0=主武器, 1=副武器, 2=药丸, 3=投掷物等) |
 
-```lua
+```CPP
 RemoveSlot(hPlayer, 0);   // 移除主武器
 RemoveSlot(hPlayer, 2);   // 移除药丸/肾上腺素
 ```
@@ -292,7 +292,7 @@ RemoveSlot(hPlayer, 2);   // 移除药丸/肾上腺素
 
 **定义**: `speedrunner_tools.nut:438-445`
 
-```lua
+```CPP
 RemoveCI();   // 清空所有 common
 ```
 
@@ -311,7 +311,7 @@ RemoveCI();   // 清空所有 common
 | `hPlayer` | entity | — | 玩家 handle |
 | `bMode` | bool | false | false=闲置, true=接管 |
 
-```lua
+```CPP
 ST_Idle(hPlayer);          // 闲置当前玩家
 ST_Idle(hPlayer, true);    // 接管 Bot
 ```
@@ -327,7 +327,7 @@ ST_Idle(hPlayer, true);    // 接管 Bot
 | `hPlayer` | entity | 玩家 1 |
 | `hPlayer2` | entity | 玩家 2 |
 
-```lua
+```CPP
 ST_PlayerReplace(hPlayer1, hPlayer2);
 ```
 
@@ -341,7 +341,7 @@ ST_PlayerReplace(hPlayer1, hPlayer2);
 |------|------|------|
 | `hPlayer` | entity | 目标玩家 |
 
-```lua
+```CPP
 PlayerKill(hPlayer);
 ```
 
@@ -363,7 +363,7 @@ PlayerKill(hPlayer);
 
 **需要难度**: `Impossible` (专家)
 
-```lua
+```CPP
 PlayerKillFromWeapon(hPlayer, hAttacker, 2);   // 2 发 shotgun 击杀队友
 ```
 
@@ -391,7 +391,7 @@ PlayerKillFromWeapon(hPlayer, hAttacker, 2);   // 2 发 shotgun 击杀队友
 | `sFileName` | string | null → `"default"` | 文件名 |
 | `bNoTeleport` | bool | false | 不回传起始位置 |
 
-```lua
+```CPP
 ST_MR(hPlayer, 0, "m1_nick");     // 录制到 m1_nick.txt
 ST_MR(hPlayer, 1, "m1_nick");     // 回放 m1_nick.txt
 ST_MR(hPlayer, 2);                 // 回放 default.txt
@@ -408,7 +408,7 @@ ST_MR(hPlayer, 3);                 // 分割
 |------|------|--------|------|
 | `hPlayer` | entity | null | 指定玩家 (null=停止所有) |
 
-```lua
+```CPP
 ST_MRStop();            // 停止所有玩家的 MR
 ST_MRStop(hPlayer);     // 停止指定玩家的 MR
 ```
@@ -435,7 +435,7 @@ ST_MRStop(hPlayer);     // 停止指定玩家的 MR
 **恢复时** (`true`):
 - 恢复默认导演参数
 
-```lua
+```CPP
 DirectorStop();          // 禁用导演系统 (清除所有感染者)
 DirectorStop(true);      // 恢复导演系统
 ```
@@ -450,7 +450,7 @@ DirectorStop(true);      // 恢复导演系统
 |------|------|--------|------|
 | `bValue` | bool | false | true=开门一次, false=持续自动开门 |
 
-```lua
+```CPP
 AutoOpen(true);          // 自动打开最近的安全门
 AutoOpen(false);         // 持续自动开门 (每 0.6 秒检测)
 ```
@@ -469,7 +469,7 @@ AutoOpen(false);         // 持续自动开门 (每 0.6 秒检测)
 | `bStuckTeleport` | bool | false | 是否卡住传送 (自动找最近队友) |
 | `eMode` | int | 0 | 0=传送, 1=Bot 跟随, 2=远距离跟随 |
 
-```lua
+```CPP
 ScriptedTP(hPlayer, hLeader, 5.0);              // 5 秒后将 hPlayer 传到 hLeader 位置
 ScriptedTP(hPlayer, null, 3.0, true);            // 3 秒后自动卡住传送
 ScriptedTP(hPlayer, hLeader, 0, false, 0);       // 立即传送
@@ -486,7 +486,7 @@ ScriptedTP(hPlayer, hLeader, 0, false, 0);       // 立即传送
 | `hPlayer` | entity | — | 玩家 handle |
 | `fDistance` | float | 1000 | 射击距离 (0=停止自动射击) |
 
-```lua
+```CPP
 ScriptedShots(hPlayer, 800);     // 开始自动射击半径 800 内的 common
 ScriptedShots(hPlayer, 0);       // 停止自动射击
 ```
@@ -504,7 +504,7 @@ ScriptedShots(hPlayer, 0);       // 停止自动射击
 
 **flags 值**: `NAV_EMPTY`, `NAV_BATTLESTATION`, `NAV_FINALE`, `NAV_PLAYER_START`, `NAV_CHECKPOINT`, `NAV_NO_MOBS` 等。
 
-```lua
+```CPP
 NavMark(Vector(...));                       // 普通 NAV 标记
 NavMark(Vector(...), NAV_CHECKPOINT);       // checkpoint 标记
 ```
@@ -535,7 +535,7 @@ NavMark(Vector(...), NAV_CHECKPOINT);       // checkpoint 标记
 
 **回调解发**: `OnAutoFired(hPlayer, data)` 和 `OnAutoFired_Post(hPlayer, hClient, data)`
 
-```lua
+```CPP
 AutoFire(hPlayer, Vector(0, 90, 0), Vector(...), false, true, 30);
 ```
 
@@ -551,7 +551,7 @@ AutoFire(hPlayer, Vector(0, 90, 0), Vector(...), false, true, 30);
 
 其余参数同 AutoFire。`fRadius` 默认 70。
 
-```lua
+```CPP
 AutoFire2(hPlayer, Vector(0, 180, 0), Vector(...));
 ```
 
@@ -572,7 +572,7 @@ Pipe/火瓶团队 Boost (AF3)。
 
 **注册方式**: 通过 `OnGameEvent_weapon_fire` 事件监听。
 
-```lua
+```CPP
 AutoFire3(hPlayer, [hPlayer2, hPlayer3], 2.0, "pipe_bomb");
 ```
 
@@ -582,7 +582,7 @@ AutoFire3(hPlayer, [hPlayer2, hPlayer3], 2.0, "pipe_bomb");
 
 **定义**: `speedrunner_tools.nut:887-892`
 
-```lua
+```CPP
 AFStop();   // 停止 AF1, AF2, AF3
 ```
 
@@ -600,7 +600,7 @@ AFStop();   // 停止 AF1, AF2, AF3
 |------|------|--------|------|
 | `isHUD` | bool | true | true=启动并显示 HUD, false=停止计时 |
 
-```lua
+```CPP
 SpeedrunStart();         // 启动计时
 SpeedrunStart(false);    // 停止计时
 ```
@@ -615,7 +615,7 @@ SpeedrunStart(false);    // 停止计时
 |------|------|--------|------|
 | `bAllowFastRestarts` | bool | false | false=投票换图重启, true=快速 RestartGame |
 
-```lua
+```CPP
 SpeedrunRestart();           // 标准重启
 SpeedrunRestart(true);       // 快速重启 (保留装备)
 ```
@@ -630,7 +630,7 @@ SpeedrunRestart(true);       // 快速重启 (保留装备)
 |------|------|--------|------|
 | `value` | int | 3 | 3=开始倒计时, 2=倒数 1, 1=倒数 2, 0=结束冻结并调用 Inventory |
 
-```lua
+```CPP
 Timer();        // 使用 g_ST.timer_value (默认 3 秒)
 ```
 
@@ -646,7 +646,7 @@ Timer();        // 使用 g_ST.timer_value (默认 3 秒)
 |------|------|--------|------|
 | `value` | float | 0.0 | 初始时间值 |
 
-```lua
+```CPP
 HUDLoad();          // 从 0 开始
 HUDLoad(30.5);      // 从 30.5 秒开始
 HUDLoad(g_RTA.time); // 接着上次 RTA 时间
@@ -658,7 +658,7 @@ HUDLoad(g_RTA.time); // 接着上次 RTA 时间
 
 **定义**: `vs_st_ems.nut:959-1008` (g_STLib.Funcs.PrintTime)
 
-```lua
+```CPP
 g_STLib.Funcs.PrintTime();
 ```
 
@@ -688,7 +688,7 @@ CPTime("Checkpoint"); // 输出 "Checkpoint 234.567"
 |------|------|--------|------|
 | `fValue` | float | 0 | 新的时间值 |
 
-```lua
+```CPP
 CPSetTime(0);        // 重置计时器为 0
 CPSetTime(10.5);     // 设置为 10.5 秒
 ```
@@ -701,7 +701,7 @@ CPSetTime(10.5);     // 设置为 10.5 秒
 
 **返回值**: float — 从 `g_STLib.Vars.time` 到现在的秒数。
 
-```lua
+```CPP
 local t = CPGetTime();
 ```
 
@@ -723,7 +723,7 @@ local t = CPGetTime();
 | `vecVel` | Vector | null | 速度 (null=不变) |
 | `bOriginKV` | bool | false | 是否用 KV 方式设置原点 |
 
-```lua
+```CPP
 TeleportEntity(hPlayer, Vector(100, 200, 50), Vector(30, 180, 0));
 ```
 
@@ -741,7 +741,7 @@ TeleportEntity(hPlayer, Vector(100, 200, 50), Vector(30, 180, 0));
 
 **返回值**: entity handle 或 null。
 
-```lua
+```CPP
 local hEnt = GetPicker(hPlayer);
 ```
 
@@ -753,7 +753,7 @@ local hEnt = GetPicker(hPlayer);
 
 **返回值**: Vector — 射线击中的坐标。
 
-```lua
+```CPP
 local vecPos = GetPickerPos(hPlayer);
 ```
 
@@ -770,7 +770,7 @@ local vecPos = GetPickerPos(hPlayer);
 
 **返回值**: entity handle 或 null。
 
-```lua
+```CPP
 GetPlayer(MDL_NI);     // 找 Nick
 GetPlayer(MDL_CO);     // 找 Coach
 GetPlayer();           // 找任意生还者
@@ -815,7 +815,7 @@ GetPlayer();           // 找任意生还者
 
 **返回值**: string — 格式化的时间字符串。
 
-```lua
+```CPP
 GetDisplayTime(83.456);     // "1:23"
 ```
 
@@ -837,7 +837,7 @@ GetDisplayTime(83.456);     // "1:23"
 
 **返回值**: table — 包含 `time`, `time_full`, `date`, `timestamp`, `timestamp2`, `timestamp3`。
 
-```lua
+```CPP
 local d = GetDate();
 printl(d.timestamp);    // "13/05/2026 @ 15:00:00"
 ```
@@ -870,7 +870,7 @@ printl(d.timestamp);    // "13/05/2026 @ 15:00:00"
 
 **返回值**: entity handle 或 null。
 
-```lua
+```CPP
 Ent(1);               // 索引 1
 Ent("!nick");         // 名称查找
 Ent(hPlayer);         // 有效性检查
@@ -888,7 +888,7 @@ Ent(hPlayer);         // 有效性检查
 | `sSound` | string | — | 音效名 |
 | `iRadius` | int | 3000 | 传播半径 |
 
-```lua
+```CPP
 EmitSound(Vector(...), "Shotgun.Fire");
 ```
 
@@ -905,7 +905,7 @@ EmitSound(Vector(...), "Shotgun.Fire");
 | `sndRadius` | int | 5000 | 半径 |
 | `flags` | int | 0 | SND_* 标记 |
 
-```lua
+```CPP
 EmitSoundEx(hPlayer, "Player.Jump");
 ```
 
@@ -923,7 +923,7 @@ EmitSoundEx(hPlayer, "Player.Jump");
 
 **返回值**: `logic_timer` entity handle。
 
-```lua
+```CPP
 OnGameFrame("g_STLib.AF1.Think");                                // 每帧执行
 OnGameFrame("SpeedrunRestart(false)", 1.0);                       // 1 秒后执行一次
 OnGameFrame("MyFunction()", 0.1, 5.0);                            // 每 0.1 秒执行，持续 5 秒
@@ -1041,7 +1041,7 @@ OnGameFrame("g_STLib.AF1.ThinkProj", null, 0.5);                  // 每帧执�
 | `hPlayer` | entity | 玩家 |
 | `sCmd` | string | 命令 |
 
-```lua
+```CPP
 ClientCommand(hPlayer, "say hello");
 ```
 
@@ -1065,7 +1065,7 @@ ClientCommand(hPlayer, "say hello");
 | `iAmmo` | int | null | 备弹数 |
 | `iUpgrade` | int | null | 升级弹药 (0= incendiary, 1= explosive, 2= laser) |
 
-```lua
+```CPP
 SetAmmo(hPlayer, 0, 30, 90);           // 主武器 30 发弹夹 + 90 备弹
 SetAmmo(hPlayer, 0, 30, 90, 1);        // + 高爆弹药
 ```
@@ -1080,7 +1080,7 @@ SetAmmo(hPlayer, 0, 30, 90, 1);        // + 高爆弹药
 |------|------|------|
 | `survName` | string | 角色名 (Nick, Rochelle, Coach, Ellis) |
 
-```lua
+```CPP
 SetTeam("Coach");
 ```
 
@@ -1095,7 +1095,7 @@ SetTeam("Coach");
 | `hCaller` | entity | 发起者 |
 | `sCmd` | string | 难度 (Easy, Normal, Hard, Impossible) |
 
-```lua
+```CPP
 CallVote(hPlayer, "Easy");
 ```
 
@@ -1117,7 +1117,7 @@ CallVote(hPlayer, "Easy");
 | `hPlayer` | entity | — | 要踢的 Bot |
 | `bRootKey` | bool | false | 是否注册 round_end 事件 |
 
-```lua
+```CPP
 AutoKick(hPlayer, hBot);
 ```
 
@@ -1138,7 +1138,7 @@ AutoKick(hPlayer, hBot);
 
 **输出文件**: `ems/st_config/items_dump.nut`
 
-```lua
+```CPP
 DebugItems();              // 标记所有物品
 DebugItems("molotov");     // 仅标记燃烧瓶
 ```
@@ -1155,7 +1155,7 @@ DebugItems("molotov");     // 仅标记燃烧瓶
 | `bChat` | bool | false | true=聊天输出, false=控制台输出 |
 | `bLocalTime` | bool | false | 使用本地时间而非 CPGetTime |
 
-```lua
+```CPP
 CheckMoving(5.0);             // 监听 5 秒
 CheckMoving(3.0, true);       // 聊天窗口输出
 ```
@@ -1172,7 +1172,7 @@ CheckMoving(3.0, true);       // 聊天窗口输出
 
 **输出文件**: `ems/st_config/zdump.nut`
 
-```lua
+```CPP
 ZDump();          // 立即转储
 ZDump(1.0);       // 1 秒后转储
 ```
@@ -1188,7 +1188,7 @@ ZDump(1.0);       // 1 秒后转储
 | `flags` | int | 1 | 1=HUD显示, 2=聊天输出, 4=控制台输出 |
 | `mobMax` | int | 200 | 最大 Mob 数 |
 
-```lua
+```CPP
 MobListener(1);              // 仅 HUD 显示
 MobListener(7);              // HUD + 聊天 + 控制台
 MobListener(7, 150);         // 自定义上限
@@ -1221,7 +1221,7 @@ MobListener(7, 150);         // 自定义上限
 |------|------|--------|------|
 | `hPlayer` | entity/int | 1 | 玩家 handle 或索引 |
 
-```lua
+```CPP
 ptp();           // 打印玩家 1 的位置代码
 ptp(hPlayer);    // 打印指定玩家
 ```
@@ -1250,7 +1250,7 @@ ptp(hPlayer);    // 打印指定玩家
 | `vEnd` | Vector | — | 终点 |
 | `autoPurge` | float | null | 自动清除时间 |
 
-```lua
+```CPP
 DebugTrace(Vector(0, 0, 0), Vector(100, 0, 0), 5.0);  // 显示 5 秒
 ```
 
@@ -1265,7 +1265,7 @@ DebugTrace(Vector(0, 0, 0), Vector(100, 0, 0), 5.0);  // 显示 5 秒
 | `name` | string | "" | 搜索文本 (空=清除标记) |
 | `findex` | bool | false | true=精确匹配类名或名称 |
 
-```lua
+```CPP
 find("infected");   // 标记所有含 infected 的实体
 find("", true);     // 清除所有标记
 ```

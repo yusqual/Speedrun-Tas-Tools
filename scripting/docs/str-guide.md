@@ -205,13 +205,13 @@ Debug 子菜单使用 VScript HUD 在屏幕上实时显示逐帧调试信息：
 
 在 map 脚本中添加：
 
-```squirrel
+```CPP
 IncludeScript("str_commands");
 ```
 
 #### 6.1.2 核心操作
 
-```squirrel
+```CPP
 // 录制 / 播放 / 重置
 ST_STR(hPlayer, 0);    // 开始录制
 ST_STR(hPlayer, 1);    // 开始播放
@@ -236,7 +236,7 @@ ST_STR_SwitchSlot(hPlayer, 1); // slot 1-5: 主武器/副武器/投掷物/医疗
 
 #### 6.1.3 ConVar 设置
 
-```squirrel
+```CPP
 ST_STR_SetPlayToRecord(true);   // 回放结束后自动转入录制
 ST_STR_SetOnlySetVel(true);     // 仅应用速度
 ST_STR_SetShowFrame(true);      // 屏幕中心显示帧号
@@ -253,7 +253,7 @@ ST_STR_SetPosMap(x, y, z);     // 设置坐标映射偏移
 
 #### 6.1.5 典型用法
 
-```squirrel
+```CPP
 // 1. 加载文件并开始回放
 ST_STR_LoadFile(hPlayer, "mysave");
 ST_STR(hPlayer, 1);  // mode 1 = 播放
@@ -273,7 +273,7 @@ ST_STR_SetOnlySetVel(true);
 
 基于 STR 和 Speedrunner Tools 模组封装的工具函数，需额外引入：
 
-```squirrel
+```CPP
 IncludeScript("str_extensions");
 ```
 
@@ -283,7 +283,7 @@ IncludeScript("str_extensions");
 
 闲置玩家 → 在目标位置生成 trigger → 玩家碰到后接管、输出耗时、执行回调。
 
-```squirrel
+```CPP
 ST_TriggerTeleport(hPlayer, vecPos, fCallback);
 ```
 
@@ -295,7 +295,7 @@ ST_TriggerTeleport(hPlayer, vecPos, fCallback);
 
 **示例：**
 
-```squirrel
+```CPP
 ST_TriggerTeleport(hPlayer, Vector(1000, 2000, 100), function(hPlayer, fTime) {
     printl("Hit trigger in " + fTime + " seconds");
     ST_STR_LoadFile(hPlayer, "next.STR");
@@ -359,7 +359,7 @@ addons/sourcemod/data/str/<地图名>/<文件名>.STR
 
 插件提供三个全局 Forward 供第三方插件和 VScript 使用：
 
-```sp
+```CPP
 // 回放每 tick 触发
 forward void OnPlayTick(int client, int frame, const char[] filename);
 
@@ -372,7 +372,7 @@ forward void OnPlayTickEnd(int client, const char[] filename);
 
 STR 自身也会对 client 调用 VScript 函数（如果存在）：
 
-```squirrel
+```CPP
 // 回放每帧
 if ("OnPlayTick" in getroottable()) OnPlayTick(self, curframe, "filename");
 
@@ -401,7 +401,7 @@ if ("OnPlayTickEnd" in getroottable()) OnPlayTickEnd(self, "filename");
 
 ### VScript 使用示例
 
-```squirrel
+```CPP
 // 在 map 脚本或 vs_st_speedrun.nut 中定义即可，STR 会自动调用
 
 ::OnPlayTick <- function(hPlayer, frame, filename)
@@ -451,7 +451,7 @@ if ("OnPlayTickEnd" in getroottable()) OnPlayTickEnd(self, "filename");
 
 ### 10.3 VScript 调用
 
-```squirrel
+```CPP
 // 录制
 ST_STR(hPlayer, 0);
 // ... 录制 N 帧 ...
