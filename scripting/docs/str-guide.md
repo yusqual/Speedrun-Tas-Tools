@@ -303,6 +303,41 @@ ST_TriggerTeleport(hPlayer, Vector(1000, 2000, 100), function(hPlayer, fTime) {
 });
 ```
 
+#### 6.2.2 SpawnWeaponEx
+
+在地面生成可自定义上膛弹数、备弹数、升级的武器实体。`m_iClip1` 和 `m_upgradeBitVec` 直接设在地面武器上（拾取后保留），备弹通过 `player_use` 事件 hook 在拾取后自动设置。
+
+```CPP
+SpawnWeaponEx(sName, vecPos, vecAng, iClip, iReserve, iUpgradeBits, sTarget);
+```
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `sName` | string | — | 物品名 (`"item13"`) 或实体类名 (`"weapon_shotgun_chrome"`) |
+| `vecPos` | Vector | — | 生成位置 |
+| `vecAng` | Vector | `Vector(0, random, 0)` | 生成角度 |
+| `iClip` | int | null | 上膛弹数 (`m_iClip1`) |
+| `iReserve` | int | null | 备弹数（拾取后通过 `SetAmmo` 设置） |
+| `iUpgradeBits` | int | null | 升级标志位：`1`=燃烧弹, `2`=高爆弹, `4`=激光瞄准 |
+| `sTarget` | string | `"ent_speedrun_item"` | 实体的 targetname |
+
+**返回值**: 生成的武器实体 handle。
+
+**示例：**
+
+```CPP
+// 生成 30 发弹夹 + 90 备弹 + 激光的步枪
+SpawnWeaponEx("weapon_rifle_ak47", Vector(0, 0, 0), null, 30, 90, 4);
+
+// 通过物品名生成
+SpawnWeaponEx("item13", Vector(100, 200, 50), Vector(0, 90, 0), 8, 56);
+
+// 生成带燃烧弹升级的 shotgun
+SpawnWeaponEx("weapon_autoshotgun", Vector(...), null, 10, 64, 1);
+```
+
+**实现说明：** 备弹通过 `OnGameEvent_player_use` 事件在拾取时设置。`g_STLib.WeaponAmmoOffset` 表提供各武器的 `m_iAmmo` 字节偏移，用于 `SetAmmo` / `NetProps.SetPropInt`。
+
 ---
 
 ## 7. STR 文件格式
