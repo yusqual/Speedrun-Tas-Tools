@@ -9,12 +9,17 @@
  * 用于速通观察路线时看清完全透明的 NoDraw 墙 / 地面 / 平台。
  *
  * 命令:
- *   sm_nodraw          切换开关(跟随玩家)
+ *   sm_nodraw          切换周期扫描开关(跟随玩家, TE 光束)
  *   sm_nodraw on/off   开启 / 关闭
  *   sm_nodraw_pin      切换扫描中心固定到准星指向位置
+ *   sm_nodraw_map [0/1/2]
+ *                       扫描全图一次, 用 VScript DebugDrawLine 绘制所有 NoDraw brush
+ *                       0 = 全部绘制(默认), 1 = 只绘制墙面, 2 = 只绘制地板
+ *   sm_nodraw_clear    清除 VScript DebugDrawLine 绘制
  *
  * 说明: 只覆盖世界静态 brush (NoDraw)。func_brush 实体、透明位移面暂不绘制。
  * sm_nodraw_floor 0 可关闭地面网格, 为墙面释放光束预算。
+ * sm_nodraw_map 使用地图包围盒(worldspawn)一次性扫描, 无需定时器持续刷新。
  */
 
 #pragma semicolon 1
@@ -35,6 +40,8 @@ int g_iWallHeightCount;
 #define ND_Z_TOLERANCE   12.0
 // 网格列数上限 (防止极端参数导致 trace 过多)
 #define ND_MAX_GRID      64
+// 全图扫描网格列数上限 (防止单次全图 trace 过多)
+#define ND_MAX_MAP_GRID  200
 // 每列竖直向下最多穿透的表面层数
 #define ND_MAX_LAYERS    6
 
@@ -54,12 +61,18 @@ ConVar g_hHeights;
 ConVar g_hDebug;
 ConVar g_hMaxBeams;
 ConVar g_hFloor;
+ConVar g_hMapGrid;
+ConVar g_hMapRadius;
+ConVar g_hMapTile;
 
 Handle g_hScanTimer;
 int g_iSprite = -1;
 
 // 单次扫描发送的光束计数 (调试用)
 int g_iScanBeams;
+
+// 全图扫描一次模式: 为 true 时 ND_DrawBeam 改走 VScript DebugDrawLine
+bool g_bVScriptDraw;
 
 /**
  * @brief 插件启动: 注册命令 / ConVar / 定时器。
@@ -79,6 +92,9 @@ public void OnPluginStart()
     g_hDebug      = CreateConVar("sm_nodraw_debug",    "0",         "为 1 时每次扫描后向服务器控制台打印光束数量");
     g_hMaxBeams   = CreateConVar("sm_nodraw_maxbeams", "200",       "单次扫描光束预算, 超过则截断绘制 (0 表示不限制)");
     g_hFloor      = CreateConVar("sm_nodraw_floor",    "1",         "是否绘制地面网格线 (0 关闭, 1 开启)。关闭可为墙面释放光束预算");
+    g_hMapGrid    = CreateConVar("sm_nodraw_map_grid", "128.0",     "全图扫描网格间距 (单位), 越大越快越稀疏");
+    g_hMapRadius  = CreateConVar("sm_nodraw_map_radius", "12000.0", "无法获取地图边界时, 以扫描中心为圆心的全图扫描半宽 (单位)");
+    g_hMapTile    = CreateConVar("sm_nodraw_map_tile", "1024.0",    "全图扫描墙面时的分块大小 (单位), 越小越接近周期扫描的局部命中效果, 也越慢");
 
     g_hInterval.AddChangeHook(ND_OnConVarChanged);
     g_hHeights.AddChangeHook(ND_OnHeightsChanged);
@@ -86,6 +102,8 @@ public void OnPluginStart()
 
     RegConsoleCmd("sm_nodraw", Cmd_NoDraw);
     RegConsoleCmd("sm_nodraw_pin", Cmd_NoDrawPin);
+    RegConsoleCmd("sm_nodraw_map", Cmd_NoDrawMap);
+    RegConsoleCmd("sm_nodraw_clear", Cmd_NoDrawClear);
 
     AutoExecConfig(true, "sm_nodraw_brush");
 
@@ -251,6 +269,297 @@ public Action Cmd_NoDrawPin(int client, int args)
         ND_PrintReply(client, target, "扫描中心恢复跟随玩家");
     }
     return Plugin_Handled;
+}
+
+/**
+ * @brief sm_nodraw_map 命令: 扫描全图一次并绘制 NoDraw 世界 brush。
+ *
+ * 使用 VScript DebugDrawLine 而非临时实体光束, 不受 TE_SetupBeamPoints
+ * 数量上限限制。扫描结束后无需定时器刷新, 线条持续 86400 秒。
+ * 可选参数 0/1/2 控制绘制内容: 0 全部, 1 仅墙面, 2 仅地板。
+ *
+ * @param client   命令发起者。
+ * @param args     参数个数。
+ * @return         已处理。
+ */
+public Action Cmd_NoDrawMap(int client, int args)
+{
+    int target = ND_GetTarget(client);
+    if (target == 0)
+    {
+        ReplyToCommand(client, "[NoDraw] 没有可用的游戏内客户端。");
+        return Plugin_Handled;
+    }
+
+    int mode = 0;
+    if (args >= 1)
+    {
+        char arg[8];
+        GetCmdArg(1, arg, sizeof(arg));
+        mode = StringToInt(arg);
+        if (mode < 0 || mode > 2)
+        {
+            ReplyToCommand(client, "[NoDraw] 参数应为 0=全部绘制, 1=只绘制墙面, 2=只绘制地板");
+            return Plugin_Handled;
+        }
+    }
+
+    // 关闭原有周期扫描, 避免 TE 光束与 VScript 线条重叠
+    g_bEnabled[target] = false;
+    g_bPinned[target] = false;
+
+    ND_VScriptClear(target);
+    ND_MapScanForClient(target, mode);
+
+    if (mode == 0)
+        ND_PrintReply(client, target, "已扫描全图并绘制 NoDraw brush: 全部 (墙面+地板)");
+    else if (mode == 1)
+        ND_PrintReply(client, target, "已扫描全图并绘制 NoDraw brush: 仅墙面");
+    else
+        ND_PrintReply(client, target, "已扫描全图并绘制 NoDraw brush: 仅地板");
+    return Plugin_Handled;
+}
+
+/**
+ * @brief sm_nodraw_clear 命令: 清除 VScript DebugDrawLine 绘制的 NoDraw 标记。
+ *
+ * @param client   命令发起者。
+ * @param args     参数个数。
+ * @return         已处理。
+ */
+public Action Cmd_NoDrawClear(int client, int args)
+{
+    int target = ND_GetTarget(client);
+    if (target == 0)
+    {
+        ReplyToCommand(client, "[NoDraw] 没有可用的游戏内客户端。");
+        return Plugin_Handled;
+    }
+
+    ND_VScriptClear(target);
+    ND_PrintReply(client, target, "已清除 NoDraw 全图绘制");
+    return Plugin_Handled;
+}
+
+/**
+ * @brief 获取地图世界几何边界 (worldspawn m_WorldMins/m_WorldMaxs)。
+ *
+ * 优先从 worldspawn 实体数据中读取地图包围盒; 若读取失败或包围盒无效,
+ * 则以客户端当前位置为中心, 用 sm_nodraw_map_radius 构造方形包围盒作为回退。
+ *
+ * @param client       目标客户端索引, 用于回退时获取扫描中心。
+ * @param[out] mins    地图包围盒最小坐标。
+ * @param[out] maxs    地图包围盒最大坐标。
+ * @return              true 表示成功读取到有效地图包围盒, false 表示使用了回退包围盒。
+ */
+public bool ND_GetMapBounds(int client, float mins[3], float maxs[3])
+{
+    int world = FindEntityByClassname(-1, "worldspawn");
+    if (world == -1)
+        world = 0;
+
+    if (HasEntProp(world, Prop_Data, "m_WorldMins"))
+    {
+        GetEntPropVector(world, Prop_Data, "m_WorldMins", mins);
+        GetEntPropVector(world, Prop_Data, "m_WorldMaxs", maxs);
+        if (maxs[0] - mins[0] > 512.0 && maxs[1] - mins[1] > 512.0)
+            return true;
+    }
+    if (HasEntProp(world, Prop_Send, "m_WorldMins"))
+    {
+        GetEntPropVector(world, Prop_Send, "m_WorldMins", mins);
+        GetEntPropVector(world, Prop_Send, "m_WorldMaxs", maxs);
+        if (maxs[0] - mins[0] > 512.0 && maxs[1] - mins[1] > 512.0)
+            return true;
+    }
+
+    float center[3];
+    if (g_bPinned[client])
+    {
+        center = g_fPinPos[client];
+    }
+    else
+    {
+        GetClientAbsOrigin(client, center);
+    }
+    float radius = g_hMapRadius.FloatValue;
+    if (radius < 1024.0)
+        radius = 1024.0;
+    mins[0] = center[0] - radius; mins[1] = center[1] - radius; mins[2] = center[2] - radius;
+    maxs[0] = center[0] + radius; maxs[1] = center[1] + radius; maxs[2] = center[2] + radius;
+    return false;
+}
+
+/**
+ * @brief 为指定客户端执行一次全图 NoDraw 扫描, 并用 VScript DebugDrawLine 绘制。
+ *
+ * 与周期扫描不同: 本函数只执行一次, 不依赖循环定时器; 扫描范围来自地图
+ * 包围盒 (见 ND_GetMapBounds), 线条持续 86400 秒。
+ * 墙面采用分块局部扫描, 避免从地图边界发射的长射线被首个可见表面挡住,
+ * 导致射线路径后方的 NoDraw 墙面漏检。
+ *
+ * @param client   目标客户端索引。
+ * @param mode     绘制内容: 0 = 全部, 1 = 仅墙面, 2 = 仅地板。
+ */
+public void ND_MapScanForClient(int client, int mode)
+{
+    float grid = g_hMapGrid.FloatValue;
+    if (grid < 32.0)
+        grid = 32.0;
+    float life = 86400.0;
+
+    g_iScanBeams = 0;
+    g_bVScriptDraw = true;
+
+    int color[4], colorFloor[4];
+    ND_GetColor(g_hColor, color);
+    ND_GetColor(g_hColorFloor, colorFloor);
+
+    float mins[3], maxs[3];
+    ND_GetMapBounds(client, mins, maxs);
+
+    float spanX = maxs[0] - mins[0];
+    float spanY = maxs[1] - mins[1];
+    float span = spanX > spanY ? spanX : spanY;
+    float scanGrid = grid;
+    int n = RoundToFloor(span / scanGrid) + 1;
+    if (n > ND_MAX_MAP_GRID)
+    {
+        // 列数超限时自动放大网格间距, 保证覆盖全图而不是截断
+        scanGrid = span / (ND_MAX_MAP_GRID - 1);
+        n = ND_MAX_MAP_GRID;
+    }
+
+    float topZ = maxs[2] + 128.0;
+    float botZ = mins[2] - 128.0;
+
+    // 水平面 (地板/天花板): 0 = 全部, 2 = 仅地板
+    if (mode != 1 && g_hFloor.IntValue)
+    {
+        ND_FloorLinePass(client, mins[0], mins[1], topZ, botZ, scanGrid, n, life, colorFloor, 0);
+        ND_FloorLinePass(client, mins[0], mins[1], topZ, botZ, scanGrid, n, life, colorFloor, 1);
+    }
+
+    // 墙面: 0 = 全部, 1 = 仅墙面; 分块局部扫描, 每块大小 sm_nodraw_map_tile
+    if (mode != 2)
+        ND_MapScanWalls(client, mins, maxs, scanGrid, life, color);
+
+    // 地图包围盒轮廓 (仅全部绘制模式, 作为扫描范围参考)
+    if (mode == 0)
+        ND_DrawBoxOutline(client, mins[0], mins[1], maxs[0], maxs[1], topZ, botZ, life);
+
+    g_bVScriptDraw = false;
+
+    if (g_hDebug.IntValue)
+        PrintToServer("[NoDraw] map scan: %d lines", g_iScanBeams);
+}
+
+/**
+ * @brief 全图墙面分块扫描: 把地图包围盒切成小块, 逐块局部双向扫描 NoDraw 墙面。
+ *
+ * 直接在地图包围盒上发射贯穿全图的长射线, 会被路径上第一个可见 brush 挡住,
+ * 使后方的 NoDraw 墙面全部漏检。这里改成以 sm_nodraw_map_tile 为块大小,
+ * 逐块调用 ND_WallLinePass, 与周期扫描围绕玩家的小范围扫描行为一致,
+ * 能恢复局部 NoDraw 墙面的命中效果。
+ *
+ * @param client   目标客户端索引。
+ * @param mins     地图包围盒最小坐标。
+ * @param maxs     地图包围盒最大坐标。
+ * @param grid     网格间距 (可能已被自动放大)。
+ * @param life     线条持续时间 (秒)。
+ * @param color    墙面颜色 (RGBA)。
+ */
+public void ND_MapScanWalls(int client, const float mins[3], const float maxs[3], float grid, float life, const int color[4])
+{
+    float tile = g_hMapTile.FloatValue;
+    if (tile < grid * 2.0)
+        tile = grid * 2.0;
+
+    float stride = tile - grid;
+    if (stride < grid)
+        stride = tile;
+
+    int tileN = RoundToFloor(tile / grid) + 1;
+    if (tileN > ND_MAX_GRID)
+        tileN = ND_MAX_GRID;
+    if (tileN < 2)
+        tileN = 2;
+
+    int tilesX = RoundToCeil((maxs[0] - mins[0]) / stride);
+    int tilesY = RoundToCeil((maxs[1] - mins[1]) / stride);
+    if (tilesX < 1) tilesX = 1;
+    if (tilesY < 1) tilesY = 1;
+
+    float height = maxs[2] - mins[2];
+    float vStep = grid;
+    int levels = RoundToFloor(height / vStep) + 1;
+    if (levels > 256)
+    {
+        // 高度层数超限时自动放大垂直步长, 保证覆盖全高
+        vStep = height / 255;
+        levels = 256;
+    }
+
+    for (int ty = 0; ty < tilesY; ty++)
+    {
+        float tMinY = mins[1] + ty * stride;
+        float tMaxY = tMinY + tile;
+        if (tMaxY > maxs[1])
+            tMaxY = maxs[1];
+
+        for (int tx = 0; tx < tilesX; tx++)
+        {
+            float tMinX = mins[0] + tx * stride;
+            float tMaxX = tMinX + tile;
+            if (tMaxX > maxs[0])
+                tMaxX = maxs[0];
+
+            for (int l = 0; l < levels; l++)
+            {
+                float z = mins[2] + l * vStep;
+                ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, 0, true);
+                ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, 0, false);
+                ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, 1, true);
+                ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, 1, false);
+            }
+        }
+    }
+}
+
+/**
+ * @brief 清除指定客户端的 VScript DebugDraw 覆盖层。
+ *
+ * @param client   目标客户端索引。
+ */
+public void ND_VScriptClear(int client)
+{
+    SetVariantString("DebugDrawClear()");
+    AcceptEntityInput(client, "RunScriptCode");
+}
+
+/**
+ * @brief 通过 VScript DebugDrawLine 向指定客户端发送一条长时线条。
+ *
+ * 替代 TE_SetupBeamPoints, 不受临时实体投递上限限制; 线条由客户端脚本
+ * 调试覆盖层绘制, 持续时间为 life 秒。
+ *
+ * @param client   目标客户端索引。
+ * @param start    线条起点。
+ * @param end      线条终点。
+ * @param life     持续时间 (秒)。
+ * @param color    颜色 (RGBA)。
+ */
+public void ND_VScriptDrawLine(int client, const float start[3], const float end[3], float life, const int color[4])
+{
+    char code[256];
+    Format(code, sizeof(code),
+        "DebugDrawLine(Vector(%f, %f, %f), Vector(%f, %f, %f), %d, %d, %d, true, %f);",
+        start[0], start[1], start[2],
+        end[0], end[1], end[2],
+        color[0], color[1], color[2],
+        life);
+    SetVariantString(code);
+    AcceptEntityInput(client, "RunScriptCode");
 }
 
 /**
@@ -679,6 +988,13 @@ public void ND_FlushFloorRun(int client, const float a[3], const float b[3], int
  */
 public void ND_DrawBeam(int client, const float start[3], const float end[3], float life, const int color[4])
 {
+    if (g_bVScriptDraw)
+    {
+        g_iScanBeams++;
+        ND_VScriptDrawLine(client, start, end, life, color);
+        return;
+    }
+
     if (g_iSprite <= 0)
         return;
     if (g_hMaxBeams.IntValue > 0 && g_iScanBeams >= g_hMaxBeams.IntValue)
