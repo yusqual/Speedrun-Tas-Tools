@@ -19,6 +19,7 @@
  *
  * 说明: 只覆盖世界静态 brush (NoDraw)。func_brush 实体、透明位移面暂不绘制。
  * sm_nodraw_floor 0 可关闭地面网格, 为墙面释放光束预算。
+ * sm_nodraw_wall_grid 1 时墙面绘制水平+垂直网格线, 0 仅水平线 (全图扫描)。
  * sm_nodraw_map 使用地图包围盒(worldspawn)一次性扫描, 无需定时器持续刷新。
  */
 
@@ -64,6 +65,7 @@ ConVar g_hFloor;
 ConVar g_hMapGrid;
 ConVar g_hMapRadius;
 ConVar g_hMapTile;
+ConVar g_hWallGrid;
 
 Handle g_hScanTimer;
 int g_iSprite = -1;
@@ -95,6 +97,7 @@ public void OnPluginStart()
     g_hMapGrid    = CreateConVar("sm_nodraw_map_grid", "128.0",     "全图扫描网格间距 (单位), 越大越快越稀疏");
     g_hMapRadius  = CreateConVar("sm_nodraw_map_radius", "12000.0", "无法获取地图边界时, 以扫描中心为圆心的全图扫描半宽 (单位)");
     g_hMapTile    = CreateConVar("sm_nodraw_map_tile", "1024.0",    "全图扫描墙面时的分块大小 (单位), 越小越接近周期扫描的局部命中效果, 也越慢");
+    g_hWallGrid   = CreateConVar("sm_nodraw_wall_grid", "1",         "全图扫描墙面是否绘制垂直网格线 (0 仅水平线, 1 水平+垂直)");
 
     g_hInterval.AddChangeHook(ND_OnConVarChanged);
     g_hHeights.AddChangeHook(ND_OnHeightsChanged);
@@ -521,8 +524,100 @@ public void ND_MapScanWalls(int client, const float mins[3], const float maxs[3]
                 ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, 0, false);
                 ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, 1, true);
                 ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, 1, false);
+
+                // 垂直网格线: 连接当前高度层与上一层, 形成墙面网格
+                if (g_hWallGrid.IntValue && l + 1 < levels)
+                {
+                    float zNext = mins[2] + (l + 1) * vStep;
+                    ND_WallGridVerticalPass(client, tMinX, tMaxX, tMinY, tMaxY, z, zNext, grid, tileN, life, color, 0, true);
+                    ND_WallGridVerticalPass(client, tMinX, tMaxX, tMinY, tMaxY, z, zNext, grid, tileN, life, color, 0, false);
+                    ND_WallGridVerticalPass(client, tMinX, tMaxX, tMinY, tMaxY, z, zNext, grid, tileN, life, color, 1, true);
+                    ND_WallGridVerticalPass(client, tMinX, tMaxX, tMinY, tMaxY, z, zNext, grid, tileN, life, color, 1, false);
+                }
             }
         }
+    }
+}
+
+/**
+ * @brief 墙面垂直网格线: 连接相邻两个高度层中同一列的 NoDraw 命中点。
+ *
+ * 对相邻高度 z0 / z1 分别发射同一条水平射线, 若两处都命中 NoDraw 表面且
+ * 法线方向一致、命中点水平距离在网格容差内, 则把两点连成垂直线段。
+ * 与 ND_WallLinePass 的水平线段共同构成墙面网格。
+ *
+ * @param client   目标客户端索引。
+ * @param minX     扫描范围最小 X。
+ * @param maxX     扫描范围最大 X。
+ * @param minY     扫描范围最小 Y。
+ * @param maxY     扫描范围最大 Y。
+ * @param z0       较低高度层 Z。
+ * @param z1       较高高度层 Z。
+ * @param grid     网格间距。
+ * @param n        网格列数。
+ * @param life     线条持续时间 (秒)。
+ * @param color    线条颜色 (RGBA)。
+ * @param axis     0 = 沿 X 发射 (固定 y), 1 = 沿 Y 发射 (固定 x)。
+ * @param fwd      true = 从 min 侧射向 max 侧, false = 反向。
+ */
+public void ND_WallGridVerticalPass(int client, float minX, float maxX, float minY, float maxY, float z0, float z1, float grid, int n, float life, const int color[4], int axis, bool fwd)
+{
+    for (int i = 0; i < n; i++)
+    {
+        float s0[3], e0[3], s1[3], e1[3];
+        if (axis == 0)
+        {
+            float y = minY + i * grid;
+            s0[0] = fwd ? minX : maxX; s0[1] = y; s0[2] = z0;
+            e0[0] = fwd ? maxX : minX; e0[1] = y; e0[2] = z0;
+            s1[0] = fwd ? minX : maxX; s1[1] = y; s1[2] = z1;
+            e1[0] = fwd ? maxX : minX; e1[1] = y; e1[2] = z1;
+        }
+        else
+        {
+            float x = minX + i * grid;
+            s0[0] = x; s0[1] = fwd ? minY : maxY; s0[2] = z0;
+            e0[0] = x; e0[1] = fwd ? maxY : minY; e0[2] = z0;
+            s1[0] = x; s1[1] = fwd ? minY : maxY; s1[2] = z1;
+            e1[0] = x; e1[1] = fwd ? maxY : minY; e1[2] = z1;
+        }
+
+        TR_TraceRayFilter(s0, e0, MASK_SOLID_BRUSHONLY, RayType_EndPoint, ND_FilterWorldOnly);
+        if (TR_StartSolid())
+            continue;
+        float pos0[3], normal0[3];
+        bool hit0 = ND_HitNodraw(pos0, normal0);
+
+        TR_TraceRayFilter(s1, e1, MASK_SOLID_BRUSHONLY, RayType_EndPoint, ND_FilterWorldOnly);
+        if (TR_StartSolid())
+            continue;
+        float pos1[3], normal1[3];
+        bool hit1 = ND_HitNodraw(pos1, normal1);
+
+        if (!hit0 || !hit1)
+            continue;
+        if (GetVectorDotProduct(normal0, normal1) <= 0.9)
+            continue;
+
+        // 同一列的两个命中点必须在同一面墙上: 水平方向位移须有界
+        if (axis == 0)
+        {
+            if (FloatAbs(pos1[0] - pos0[0]) > grid * 0.75)
+                continue;
+        }
+        else
+        {
+            if (FloatAbs(pos1[1] - pos0[1]) > grid * 0.75)
+                continue;
+        }
+
+        float p0[3], p1[3];
+        for (int k = 0; k < 3; k++)
+        {
+            p0[k] = pos0[k] + normal0[k] * ND_LINE_OFFSET;
+            p1[k] = pos1[k] + normal1[k] * ND_LINE_OFFSET;
+        }
+        ND_DrawBeam(client, p0, p1, life, color);
     }
 }
 
