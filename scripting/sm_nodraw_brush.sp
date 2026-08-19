@@ -1,19 +1,20 @@
 //SourcePawn
 
 /**
- * @brief 扫描全图一次并绘制地图中的 NoDraw 静态 brush 表面。
+ * @brief 扫描全图一次并绘制地图中的 NoDraw / SkyBox 静态 brush 表面。
  *
- * 通过网格射线扫描地图包围盒内的世界几何, 命中带 SURF_NODRAW 标志的表面时,
+ * 通过网格射线扫描地图包围盒内的世界几何, 命中带 SURF_NODRAW 或 SURF_SKY 标志的表面时,
  * 用 VScript DebugDrawLine 绘制持久网格线 (墙面水平+垂直网格, 地面横竖网格)。
- * 仅需执行一次命令, 不依赖定时器持续刷新, 用于速通观察完全透明的 NoDraw 墙/地面/平台。
+ * 仅需执行一次命令, 不依赖定时器持续刷新, 用于速通观察完全透明的 NoDraw 墙/地面/平台及天空盒。
  *
  * 命令:
  *   sm_nodraw_map [0/1/2]
- *                       扫描全图一次并绘制 NoDraw brush
+ *                       扫描全图一次并绘制 brush 表面
  *                       0 = 全部绘制(默认), 1 = 只绘制墙面, 2 = 只绘制地板
  *   sm_nodraw_clear    清除 VScript DebugDrawLine 绘制
  *
- * 说明: 只覆盖世界静态 brush (NoDraw)。func_brush 实体、透明位移面暂不绘制。
+ * 说明: 只覆盖世界静态 brush。func_brush 实体、透明位移面暂不绘制。
+ * sm_nodraw_scan_nodraw 1 时扫描 NoDraw 表面, sm_nodraw_scan_skybox 1 时扫描天空盒表面。
  * sm_nodraw_floor 0 可关闭地面网格, 为墙面释放扫描预算。
  * sm_nodraw_wall_grid 1 时墙面绘制水平+垂直网格线, 0 仅水平线。
  */
@@ -45,6 +46,9 @@ ConVar g_hMapGrid;
 ConVar g_hMapRadius;
 ConVar g_hMapTile;
 ConVar g_hWallGrid;
+ConVar g_hScanNoDraw;
+ConVar g_hScanSky;
+ConVar g_hColorSky;
 
 // 单次扫描发送的线段计数 (调试用)
 int g_iScanBeams;
@@ -60,10 +64,13 @@ public void OnPluginStart()
     g_hColorFloor = CreateConVar("sm_nodraw_color_floor", "80 255 120", "地面 NoDraw 网格线颜色 (R G B)");
     g_hDebug      = CreateConVar("sm_nodraw_debug",    "0",         "为 1 时扫描后向服务器控制台打印线段数量");
     g_hFloor      = CreateConVar("sm_nodraw_floor",    "1",         "是否绘制地面网格线 (0 关闭, 1 开启)");
-    g_hMapGrid    = CreateConVar("sm_nodraw_map_grid", "128.0",     "全图扫描网格间距 (单位), 越大越快越稀疏");
+    g_hMapGrid    = CreateConVar("sm_nodraw_map_grid", "32.0",     "全图扫描网格间距 (单位), 越大越快越稀疏");
     g_hMapRadius  = CreateConVar("sm_nodraw_map_radius", "12000.0", "无法获取地图边界时, 以玩家位置为中心的扫描半宽 (单位)");
     g_hMapTile    = CreateConVar("sm_nodraw_map_tile", "1024.0",    "全图扫描墙面时的分块大小 (单位), 越小越接近局部命中效果, 也越慢");
     g_hWallGrid   = CreateConVar("sm_nodraw_wall_grid", "1",         "全图扫描墙面是否绘制垂直网格线 (0 仅水平线, 1 水平+垂直)");
+    g_hScanNoDraw = CreateConVar("sm_nodraw_scan_nodraw", "1",       "是否扫描 NoDraw 表面 (0 关闭, 1 开启)");
+    g_hScanSky    = CreateConVar("sm_nodraw_scan_skybox", "0",       "是否扫描 SkyBox 天空盒表面 (0 关闭, 1 开启)");
+    g_hColorSky   = CreateConVar("sm_nodraw_color_skybox", "100 180 255", "SkyBox 天空盒网格线颜色 (R G B)");
 
     RegConsoleCmd("sm_nodraw_map", Cmd_NoDrawMap);
     RegConsoleCmd("sm_nodraw_clear", Cmd_NoDrawClear);
@@ -72,7 +79,7 @@ public void OnPluginStart()
 }
 
 /**
- * @brief sm_nodraw_map 命令: 扫描全图一次并绘制 NoDraw 世界 brush。
+ * @brief sm_nodraw_map 命令: 扫描全图一次并绘制指定类型的 brush 表面。
  *
  * 使用 VScript DebugDrawLine 绘制, 不受临时实体投递上限限制。
  * 扫描结束后无需定时器刷新, 线条持续 86400 秒。
@@ -104,15 +111,21 @@ public Action Cmd_NoDrawMap(int client, int args)
         }
     }
 
+    if (!g_hScanNoDraw.IntValue && !g_hScanSky.IntValue)
+    {
+        ReplyToCommand(client, "[NoDraw] 请先开启 sm_nodraw_scan_nodraw 或 sm_nodraw_scan_skybox");
+        return Plugin_Handled;
+    }
+
     ND_VScriptClear(target);
     ND_MapScanForClient(target, mode);
 
     if (mode == 0)
-        ND_PrintReply(client, target, "已扫描全图并绘制 NoDraw brush: 全部 (墙面+地板)");
+        ND_PrintReply(client, target, "已扫描全图并绘制 brush: 全部 (墙面+地板)");
     else if (mode == 1)
-        ND_PrintReply(client, target, "已扫描全图并绘制 NoDraw brush: 仅墙面");
+        ND_PrintReply(client, target, "已扫描全图并绘制 brush: 仅墙面");
     else
-        ND_PrintReply(client, target, "已扫描全图并绘制 NoDraw brush: 仅地板");
+        ND_PrintReply(client, target, "已扫描全图并绘制 brush: 仅地板");
     return Plugin_Handled;
 }
 
@@ -180,11 +193,11 @@ public bool ND_GetMapBounds(int client, float mins[3], float maxs[3])
 }
 
 /**
- * @brief 为指定客户端执行一次全图 NoDraw 扫描, 并用 VScript DebugDrawLine 绘制。
+ * @brief 为指定客户端执行一次全图 brush 扫描, 并用 VScript DebugDrawLine 绘制。
  *
- * 扫描范围来自地图包围盒 (见 ND_GetMapBounds), 线条持续 86400 秒, 不依赖定时器。
- * 墙面采用分块局部扫描, 避免从地图边界发射的长射线被首个可见表面挡住,
- * 导致射线路径后方的 NoDraw 墙面漏检。
+ * 根据 ConVar 开关分别扫描 NoDraw 与 SkyBox 表面, 扫描范围来自地图包围盒,
+ * 线条持续 86400 秒, 不依赖定时器。墙面采用分块局部扫描, 避免长射线被
+ * 首个可见表面挡住导致后方的目标墙面漏检。
  *
  * @param client   目标客户端索引。
  * @param mode     绘制内容: 0 = 全部, 1 = 仅墙面, 2 = 仅地板。
@@ -198,9 +211,10 @@ public void ND_MapScanForClient(int client, int mode)
 
     g_iScanBeams = 0;
 
-    int color[4], colorFloor[4];
+    int color[4], colorFloor[4], colorSky[4];
     ND_GetColor(g_hColor, color);
     ND_GetColor(g_hColorFloor, colorFloor);
+    ND_GetColor(g_hColorSky, colorSky);
 
     float mins[3], maxs[3];
     ND_GetMapBounds(client, mins, maxs);
@@ -220,16 +234,17 @@ public void ND_MapScanForClient(int client, int mode)
     float topZ = maxs[2] + 128.0;
     float botZ = mins[2] - 128.0;
 
-    // 水平面 (地板/天花板): 0 = 全部, 2 = 仅地板
-    if (mode != 1 && g_hFloor.IntValue)
+    if (g_hScanNoDraw.IntValue)
     {
-        ND_FloorLinePass(client, mins[0], mins[1], topZ, botZ, scanGrid, n, life, colorFloor, 0);
-        ND_FloorLinePass(client, mins[0], mins[1], topZ, botZ, scanGrid, n, life, colorFloor, 1);
+        ND_MapScanSurfaceForClient(client, mode, mins, maxs, scanGrid, n, topZ, botZ, life,
+            SURF_NODRAW, color, colorFloor);
     }
 
-    // 墙面: 0 = 全部, 1 = 仅墙面; 分块局部扫描, 每块大小 sm_nodraw_map_tile
-    if (mode != 2)
-        ND_MapScanWalls(client, mins, maxs, scanGrid, life, color);
+    if (g_hScanSky.IntValue)
+    {
+        ND_MapScanSurfaceForClient(client, mode, mins, maxs, scanGrid, n, topZ, botZ, life,
+            SURF_SKY, colorSky, colorSky);
+    }
 
     // 地图包围盒轮廓 (仅全部绘制模式, 作为扫描范围参考)
     if (mode == 0)
@@ -240,20 +255,51 @@ public void ND_MapScanForClient(int client, int mode)
 }
 
 /**
- * @brief 全图墙面分块扫描: 把地图包围盒切成小块, 逐块局部双向扫描 NoDraw 墙面。
+ * @brief 按表面类型执行一次全图扫描: 绘制指定 SURF_* 类型的水平面和墙面。
+ *
+ * @param client        目标客户端索引。
+ * @param mode          绘制内容: 0 = 全部, 1 = 仅墙面, 2 = 仅地板。
+ * @param mins          地图包围盒最小坐标。
+ * @param maxs          地图包围盒最大坐标。
+ * @param scanGrid      水平网格间距 (可能已被自动放大)。
+ * @param n             水平网格列数。
+ * @param topZ          扫描顶部 Z。
+ * @param botZ          扫描底部 Z。
+ * @param life          线条持续时间 (秒)。
+ * @param surfaceMask   SURF_* 位标志, 用于识别目标表面 (SURF_NODRAW 或 SURF_SKY)。
+ * @param colorWall     墙面线条颜色 (RGBA)。
+ * @param colorFloor    水平面线条颜色 (RGBA)。
+ */
+public void ND_MapScanSurfaceForClient(int client, int mode, const float mins[3], const float maxs[3], float scanGrid, int n, float topZ, float botZ, float life, int surfaceMask, const int colorWall[4], const int colorFloor[4])
+{
+    // 水平面 (地板/天花板): 0 = 全部, 2 = 仅地板
+    if (mode != 1 && g_hFloor.IntValue)
+    {
+        ND_FloorLinePass(client, mins[0], mins[1], topZ, botZ, scanGrid, n, life, colorFloor, surfaceMask, 0);
+        ND_FloorLinePass(client, mins[0], mins[1], topZ, botZ, scanGrid, n, life, colorFloor, surfaceMask, 1);
+    }
+
+    // 墙面: 0 = 全部, 1 = 仅墙面; 分块局部扫描, 每块大小 sm_nodraw_map_tile
+    if (mode != 2)
+        ND_MapScanWalls(client, mins, maxs, scanGrid, life, colorWall, surfaceMask);
+}
+
+/**
+ * @brief 全图墙面分块扫描: 把地图包围盒切成小块, 逐块局部双向扫描目标墙面。
  *
  * 直接在地图包围盒上发射贯穿全图的长射线, 会被路径上第一个可见 brush 挡住,
- * 使后方的 NoDraw 墙面全部漏检。这里改成以 sm_nodraw_map_tile 为块大小,
- * 逐块调用 ND_WallLinePass, 用短射线恢复局部 NoDraw 墙面的命中效果。
+ * 使后方的目标墙面全部漏检。这里改成以 sm_nodraw_map_tile 为块大小,
+ * 逐块调用 ND_WallLinePass, 用短射线恢复局部目标墙面的命中效果。
  *
- * @param client   目标客户端索引。
- * @param mins     地图包围盒最小坐标。
- * @param maxs     地图包围盒最大坐标。
- * @param grid     网格间距 (可能已被自动放大)。
- * @param life     线条持续时间 (秒)。
- * @param color    墙面颜色 (RGBA)。
+ * @param client       目标客户端索引。
+ * @param mins         地图包围盒最小坐标。
+ * @param maxs         地图包围盒最大坐标。
+ * @param grid         网格间距 (可能已被自动放大)。
+ * @param life         线条持续时间 (秒)。
+ * @param color        墙面颜色 (RGBA)。
+ * @param surfaceMask  SURF_* 位标志, 用于识别目标表面。
  */
-public void ND_MapScanWalls(int client, const float mins[3], const float maxs[3], float grid, float life, const int color[4])
+public void ND_MapScanWalls(int client, const float mins[3], const float maxs[3], float grid, float life, const int color[4], int surfaceMask)
 {
     float tile = g_hMapTile.FloatValue;
     if (tile < grid * 2.0)
@@ -301,19 +347,19 @@ public void ND_MapScanWalls(int client, const float mins[3], const float maxs[3]
             for (int l = 0; l < levels; l++)
             {
                 float z = mins[2] + l * vStep;
-                ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, 0, true);
-                ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, 0, false);
-                ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, 1, true);
-                ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, 1, false);
+                ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, surfaceMask, 0, true);
+                ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, surfaceMask, 0, false);
+                ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, surfaceMask, 1, true);
+                ND_WallLinePass(client, tMinX, tMaxX, tMinY, tMaxY, z, grid, tileN, life, color, surfaceMask, 1, false);
 
                 // 垂直网格线: 连接当前高度层与上一层, 形成墙面网格
                 if (g_hWallGrid.IntValue && l + 1 < levels)
                 {
                     float zNext = mins[2] + (l + 1) * vStep;
-                    ND_WallGridVerticalPass(client, tMinX, tMaxX, tMinY, tMaxY, z, zNext, grid, tileN, life, color, 0, true);
-                    ND_WallGridVerticalPass(client, tMinX, tMaxX, tMinY, tMaxY, z, zNext, grid, tileN, life, color, 0, false);
-                    ND_WallGridVerticalPass(client, tMinX, tMaxX, tMinY, tMaxY, z, zNext, grid, tileN, life, color, 1, true);
-                    ND_WallGridVerticalPass(client, tMinX, tMaxX, tMinY, tMaxY, z, zNext, grid, tileN, life, color, 1, false);
+                    ND_WallGridVerticalPass(client, tMinX, tMaxX, tMinY, tMaxY, z, zNext, grid, tileN, life, color, surfaceMask, 0, true);
+                    ND_WallGridVerticalPass(client, tMinX, tMaxX, tMinY, tMaxY, z, zNext, grid, tileN, life, color, surfaceMask, 0, false);
+                    ND_WallGridVerticalPass(client, tMinX, tMaxX, tMinY, tMaxY, z, zNext, grid, tileN, life, color, surfaceMask, 1, true);
+                    ND_WallGridVerticalPass(client, tMinX, tMaxX, tMinY, tMaxY, z, zNext, grid, tileN, life, color, surfaceMask, 1, false);
                 }
             }
         }
@@ -321,9 +367,9 @@ public void ND_MapScanWalls(int client, const float mins[3], const float maxs[3]
 }
 
 /**
- * @brief 墙面垂直网格线: 连接相邻两个高度层中同一列的 NoDraw 命中点。
+ * @brief 墙面垂直网格线: 连接相邻两个高度层中同一列的目标表面命中点。
  *
- * 对相邻高度 z0 / z1 分别发射同一条水平射线, 若两处都命中 NoDraw 表面且
+ * 对相邻高度 z0 / z1 分别发射同一条水平射线, 若两处都命中目标表面且
  * 法线方向一致、命中点水平距离在网格容差内, 则把两点连成垂直线段。
  * 与 ND_WallLinePass 的水平线段共同构成墙面网格。
  *
@@ -336,12 +382,13 @@ public void ND_MapScanWalls(int client, const float mins[3], const float maxs[3]
  * @param z1       较高高度层 Z。
  * @param grid     网格间距。
  * @param n        网格列数。
- * @param life     线条持续时间 (秒)。
- * @param color    线条颜色 (RGBA)。
- * @param axis     0 = 沿 X 发射 (固定 y), 1 = 沿 Y 发射 (固定 x)。
- * @param fwd      true = 从 min 侧射向 max 侧, false = 反向。
+ * @param life         线条持续时间 (秒)。
+ * @param color        线条颜色 (RGBA)。
+ * @param surfaceMask  SURF_* 位标志, 用于识别目标表面。
+ * @param axis         0 = 沿 X 发射 (固定 y), 1 = 沿 Y 发射 (固定 x)。
+ * @param fwd          true = 从 min 侧射向 max 侧, false = 反向。
  */
-public void ND_WallGridVerticalPass(int client, float minX, float maxX, float minY, float maxY, float z0, float z1, float grid, int n, float life, const int color[4], int axis, bool fwd)
+public void ND_WallGridVerticalPass(int client, float minX, float maxX, float minY, float maxY, float z0, float z1, float grid, int n, float life, const int color[4], int surfaceMask, int axis, bool fwd)
 {
     for (int i = 0; i < n; i++)
     {
@@ -367,13 +414,13 @@ public void ND_WallGridVerticalPass(int client, float minX, float maxX, float mi
         if (TR_StartSolid())
             continue;
         float pos0[3], normal0[3];
-        bool hit0 = ND_HitNodraw(pos0, normal0);
+        bool hit0 = ND_HitSurface(pos0, normal0, surfaceMask);
 
         TR_TraceRayFilter(s1, e1, MASK_SOLID_BRUSHONLY, RayType_EndPoint, ND_FilterWorldOnly);
         if (TR_StartSolid())
             continue;
         float pos1[3], normal1[3];
-        bool hit1 = ND_HitNodraw(pos1, normal1);
+        bool hit1 = ND_HitSurface(pos1, normal1, surfaceMask);
 
         if (!hit0 || !hit1)
             continue;
@@ -488,15 +535,16 @@ public bool ND_FilterWorldOnly(int entity, int contentsMask)
 }
 
 /**
- * @brief 读取当前 TR 结果: 是否命中世界 NoDraw 表面, 并输出命中点与法线。
+ * @brief 读取当前 TR 结果: 是否命中指定 SURF_* 类型的世界表面, 并输出命中点与法线。
  *
- * @param[out] pos       命中点坐标。
- * @param[out] normal    命中表面法线。
- * @return               true 表示命中 NoDraw 世界表面。
+ * @param[out] pos           命中点坐标。
+ * @param[out] normal        命中表面法线。
+ * @param surfaceMask        SURF_* 位标志, 用于识别目标表面 (SURF_NODRAW 或 SURF_SKY)。
+ * @return                   true 表示命中指定类型的世界表面。
  */
-public bool ND_HitNodraw(float pos[3], float normal[3])
+public bool ND_HitSurface(float pos[3], float normal[3], int surfaceMask)
 {
-    if (!TR_DidHit() || !(TR_GetSurfaceFlags() & SURF_NODRAW))
+    if (!TR_DidHit() || !(TR_GetSurfaceFlags() & surfaceMask))
         return false;
     TR_GetEndPosition(pos);
     TR_GetPlaneNormal(INVALID_HANDLE, normal);
@@ -518,12 +566,13 @@ public bool ND_HitNodraw(float pos[3], float normal[3])
  * @param z        当前高度层 Z。
  * @param grid     网格间距。
  * @param n        网格列数。
- * @param life     线条持续时间 (秒)。
- * @param color    标记颜色。
- * @param axis     0 = 沿 X 发射 (固定 y), 1 = 沿 Y 发射 (固定 x)。
- * @param fwd      true = 从 min 侧射向 max 侧, false = 反向。
+ * @param life         线条持续时间 (秒)。
+ * @param color        标记颜色。
+ * @param surfaceMask  SURF_* 位标志, 用于识别目标表面。
+ * @param axis         0 = 沿 X 发射 (固定 y), 1 = 沿 Y 发射 (固定 x)。
+ * @param fwd          true = 从 min 侧射向 max 侧, false = 反向。
  */
-public void ND_WallLinePass(int client, float minX, float maxX, float minY, float maxY, float z, float grid, int n, float life, const int color[4], int axis, bool fwd)
+public void ND_WallLinePass(int client, float minX, float maxX, float minY, float maxY, float z, float grid, int n, float life, const int color[4], int surfaceMask, int axis, bool fwd)
 {
     int runCount = 0;
     float runA[3], runB[3], runN[3];
@@ -556,7 +605,7 @@ public void ND_WallLinePass(int client, float minX, float maxX, float minY, floa
             continue;
         }
         float pos[3], normal[3];
-        if (ND_HitNodraw(pos, normal))
+        if (ND_HitSurface(pos, normal, surfaceMask))
         {
             if (runCount == 0)
             {
@@ -667,11 +716,12 @@ public bool ND_RunContiguous(const float a[3], const float b[3], float grid, int
  * @param botZ     扫描盒底部 Z。
  * @param grid     网格间距。
  * @param n        网格列数。
- * @param life     线条持续时间 (秒)。
- * @param color    标记颜色。
- * @param axis     0 = 沿 X 连线 (固定 y), 1 = 沿 Y 连线 (固定 x)。
+ * @param life         线条持续时间 (秒)。
+ * @param color        标记颜色。
+ * @param surfaceMask  SURF_* 位标志, 用于识别目标表面。
+ * @param axis         0 = 沿 X 连线 (固定 y), 1 = 沿 Y 连线 (固定 x)。
  */
-public void ND_FloorLinePass(int client, float minX, float minY, float topZ, float botZ, float grid, int n, float life, const int color[4], int axis)
+public void ND_FloorLinePass(int client, float minX, float minY, float topZ, float botZ, float grid, int n, float life, const int color[4], int surfaceMask, int axis)
 {
     for (int outer = 0; outer < n; outer++)
     {
@@ -692,7 +742,7 @@ public void ND_FloorLinePass(int client, float minX, float minY, float topZ, flo
                 y = minY + inner * grid;
             }
 
-            // 该列从 topZ 向下穿透非 NoDraw 层, 取最上方 NoDraw 面
+            // 该列从 topZ 向下穿透非目标层, 取最上方目标表面
             float z = topZ;
             bool bHit = false;
             float pos[3];
@@ -705,7 +755,7 @@ public void ND_FloorLinePass(int client, float minX, float minY, float topZ, flo
                 if (!TR_DidHit())
                     break;
                 TR_GetEndPosition(pos);
-                if (TR_GetSurfaceFlags() & SURF_NODRAW)
+                if (TR_GetSurfaceFlags() & surfaceMask)
                 {
                     bHit = true;
                     break;
