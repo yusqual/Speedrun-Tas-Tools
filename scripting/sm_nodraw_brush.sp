@@ -25,6 +25,16 @@
 #include <sourcemod>
 #include <sdktools>
 
+public Plugin myinfo = 
+{
+    name = "NoDrawBrush",
+    author = "Yusqual",
+    description = "Draw nodraw & skybox brush.",
+    version = "1.0",
+    url = "none"
+};
+
+
 // 网格线相对表面法线的外移量 (单位), 避免贴面被深度遮挡
 #define ND_LINE_OFFSET   4.0
 // 孤立命中点的 stub 长度 (单位)
