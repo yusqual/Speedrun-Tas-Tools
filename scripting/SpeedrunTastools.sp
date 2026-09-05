@@ -92,6 +92,9 @@ Handle g_hOnPlayTick;
 Handle g_hOnRecordTick;
 Handle g_hOnPlayTickEnd;
 
+// 回放兼容性开关：启用后使用类似 MR 的物理还原方式，保留斜坡蹲起卡住状态。
+Handle g_ConVar_ReplayStuckRepro;
+
 //=============================================================================
 // 玩家状态管理（所有 getter/setter）
 //=============================================================================
@@ -168,6 +171,7 @@ public void OnPluginStart()
     g_ConVar_PosMap_y    = CreateConVar("str_posmap_y", "0.0", "坐标映射y分量.", FCVAR_NOTIFY);
     g_ConVar_PosMap_z    = CreateConVar("str_posmap_z", "0.0", "坐标映射z分量.", FCVAR_NOTIFY);
     b_OnlySetVel         = CreateConVar("str_onlysetvel", "0", "仅设置速度,不设置坐标和视角.", FCVAR_NOTIFY);
+    g_ConVar_ReplayStuckRepro = CreateConVar("str_replay_stuck_repro", "1", "回放时使用类似MR的物理还原方式，以复现斜坡蹲起卡住状态.", FCVAR_NOTIFY);
 
     // VScript 触发用 ConVar（自动归零）
     g_ConVar_STR_TriggerPlay   = CreateConVar("str_trigger_play", "0",
