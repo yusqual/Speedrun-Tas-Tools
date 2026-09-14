@@ -310,6 +310,20 @@ public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_
     if (ibuttonsEx & IN_USE) ClientCommand(client, "+use");
     else ClientCommand(client, "-use");
 
+    // 真人客户端：将动作键合并进服务端按键掩码。
+    // ClientCommand 依赖客户端本机执行，对远程联机客户端不可靠（可能被
+    // cl_restrict_server_commands 拦截），联机时其他客户端会看不到按E/右键
+    // 等动作；掩码由服务端直接处理（门交互/推击/开火均为服务端判定并同步），
+    // 保证动作必然发生。帧不含该键时无需显式清除，下一 tick 客户端掩码
+    // 自然归零。ClientCommand 保留，用于播放者本机的即时预测显示。
+    if (!IsFakeClient(client))
+    {
+        if (ibuttons & IN_ATTACK) buttons |= IN_ATTACK;
+        if (ibuttons & IN_ATTACK2) buttons |= IN_ATTACK2;
+        if (ibuttons & IN_RELOAD) buttons |= IN_RELOAD;
+        if (ibuttonsEx & IN_USE) buttons |= IN_USE;
+    }
+
     // 攻击按键直接从 ibuttons（当前帧）处理，不再使用计数器。
     // 原因：用 ibuttonsEx + 计数器的方式，当播放因地图过渡等被中断时，
     // counter 无法递减到 0，导致 -attack 永远发不出，左键卡死。
