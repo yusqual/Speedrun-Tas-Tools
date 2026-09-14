@@ -250,10 +250,8 @@ static bool HandleLinearSmoothTransition(int client, float velocity[3])
 
 /**
  * @brief 注入播放帧的按键指令到客户端。
- * 默认对真人玩家使用 ClientCommand 注入按键，将帧数据转换为
- * +duck/-duck、+forward/-forward 等指令。
- * 当 str_replay_stuck_repro 开启时，改为类似 MR 的按键合并方式，
- * 只修改 buttons 掩码而不发送 ClientCommand，以保留引擎原始的蹲起/卡住判定。
+ * 对于真人玩家使用 ClientCommand 注入按键。
+ * 将帧数据的按键信息转换为 +duck/-duck 等指令。
  *
  * @param client       客户端索引。
  * @param buttons      当前按键掩码（可修改）。
@@ -266,14 +264,6 @@ public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_
 {
     int ibuttons = frameinfo[FRAME_Buttons];
     int ibuttonsEx = frameinfo_action[FRAME_Buttons];
-
-    // MR 兼容模式：不发送 +duck/-duck 等 ClientCommand，只合并按键位，
-    // 让引擎像 MR 回放一样自行处理蹲起与卡住物理。
-    if (GetConVarBool(g_ConVar_ReplayStuckRepro))
-    {
-        buttons |= ibuttons;
-        return;
-    }
     
     if (!IsFakeClient(client) || frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER || (GetClientTeam(client) == 3))
     {
@@ -349,8 +339,6 @@ public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_
  * @param bOnlySetVel        是否仅设置速度。
  * @param fPlaybackTimeScale 播放时的 host_timescale 值。
  * @return                   Action 值。
- * @note                当 str_replay_stuck_repro 为 1 时，采用类似 MR 的物理还原方式，
- *                      不强制恢复 MOVETYPE_WALK，也不主动发送 -duck，以复现斜坡蹲起卡住。
  */
 public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], float wishangles[3],
     int& weapon, Handle hOnPlayTick, bool bPlayWhenIncapacitated, bool bPlayingToRecord,
@@ -473,13 +461,10 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
             AcceptEntityInput(client, "RunScriptCode");
 
             Player_ResetAllReplayState(client);
-            if (!GetConVarBool(g_ConVar_ReplayStuckRepro))
+            ResetButton(client);
+            if (IsClientInGame(client) && GetClientTeam(client) != 1)
             {
-                ResetButton(client);
-                if (IsClientInGame(client) && GetClientTeam(client) != 1)
-                {
-                    SetEntityMoveType(client, MOVETYPE_WALK);
-                }
+                SetEntityMoveType(client, MOVETYPE_WALK);
             }
             STR_PrintMessageToAllClients("%N的Replay在%d帧停止.", client, curframe);
             return Plugin_Continue;
@@ -571,30 +556,15 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
                     if (ibuttons_frame & IN_MOVELEFT) wishvel[1] -= 450.0;
 
                     TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
-                    DispatchKeyValueVector(client, "origin", pos);
-                }
-                else if (GetConVarBool(g_ConVar_ReplayStuckRepro))
-                {
-                    // MR 兼容模式：不强制恢复 MOVETYPE_WALK，先设置 origin，再设置速度和角度。
-                    DispatchKeyValueVector(client, "origin", pos);
-                    TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
-                    TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
                 }
                 else
                 {
                     // 非爬梯帧恢复 MOVETYPE_WALK，防止爬梯状态残留
                     SetEntityMoveType(client, MOVETYPE_WALK);
                     TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
-                    DispatchKeyValueVector(client, "origin", pos);
                 }
-                if (GetConVarBool(g_ConVar_ReplayStuckRepro))
-                {
-                    buttons |= frameinfo[FRAME_Buttons];
-                }
-                else
-                {
-                    buttons = frameinfo[FRAME_Buttons];
-                }
+                DispatchKeyValueVector(client, "origin", pos);
+                buttons = frameinfo[FRAME_Buttons];
             }
         }
     }
@@ -668,16 +638,12 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 
             // 在所有状态变量之前释放按键，防止最后一帧注入的
             // +attack/+attack2 等卡死（尤其 +attack 导致左键失效）
-            // MR 兼容模式下不主动释放按键/移动类型，以保留卡住状态。
-            if (!GetConVarBool(g_ConVar_ReplayStuckRepro))
-            {
-                ResetButton(client);
-                if (IsClientInGame(client) && GetClientTeam(client) != 1)
-                {
-                    SetEntityMoveType(client, MOVETYPE_WALK);
-                }
-            }
+            ResetButton(client);
             Player_ResetAllReplayState(client);
+            if (IsClientInGame(client) && GetClientTeam(client) != 1)
+            {
+                SetEntityMoveType(client, MOVETYPE_WALK);
+            }
         }
     }
     
@@ -687,8 +653,6 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 /**
  * @brief 应用播放帧的位置/角度/速度。
  * 处理爬梯模式（MOVETYPE_LADDER）的特殊逻辑。
- * 当 str_replay_stuck_repro 开启时，使用类似 MR 的 origin→velocity→angles
- * 设置顺序，并且不强制恢复 MOVETYPE_WALK，以保留斜坡蹲起卡住物理状态。
  *
  * @param client      客户端索引。
  * @param frameinfo   当前帧数据。
@@ -707,22 +671,14 @@ static void ApplyPlaybackPosition(int client, any frameinfo[FRAME_Length],
         // 爬梯帧：不设置 MOVETYPE/velocity/wishvel，让引擎从按键+角度自然处理爬梯物理
         buttons = frameinfo[FRAME_Buttons];
         TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
-        DispatchKeyValueVector(client, "origin", pos);
-    }
-    else if (GetConVarBool(g_ConVar_ReplayStuckRepro))
-    {
-        // MR 兼容模式：先放 origin，再设置速度和角度，且不强制 MOVETYPE_WALK。
-        DispatchKeyValueVector(client, "origin", pos);
-        TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
-        TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
     }
     else
     {
         // 非爬梯帧恢复 MOVETYPE_WALK，防止爬梯状态残留
         SetEntityMoveType(client, MOVETYPE_WALK);
         TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
-        DispatchKeyValueVector(client, "origin", pos);
     }
+    DispatchKeyValueVector(client, "origin", pos);
 }
 
 //=============================================================================
