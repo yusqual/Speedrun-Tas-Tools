@@ -267,30 +267,11 @@ public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_
     int ibuttons = frameinfo[FRAME_Buttons];
     int ibuttonsEx = frameinfo_action[FRAME_Buttons];
 
-    // MR 兼容模式：不发送 +duck/+forward 等移动类 ClientCommand，只合并按键位，
+    // MR 兼容模式：不发送 +duck/-duck 等 ClientCommand，只合并按键位，
     // 让引擎像 MR 回放一样自行处理蹲起与卡住物理。
-    // 真人客户端仍需对动作键发送 ClientCommand（掩码合并由 buttons |= ibuttons
-    // 覆盖 IN_USE/IN_ATTACK2/IN_ATTACK），ClientCommand 用于播放者本机即时预测；
-    // 远程联机客户端的动作由服务端掩码保证（ClientCommand 对远程客户端不可靠）。
     if (GetConVarBool(g_ConVar_ReplayStuckRepro))
     {
         buttons |= ibuttons;
-
-        if (!IsFakeClient(client))
-        {
-            if (ibuttons & IN_ATTACK) ClientCommand(client, "+attack");
-            else ClientCommand(client, "-attack");
-
-            if (ibuttons & IN_ATTACK2) ClientCommand(client, "+attack2");
-            else ClientCommand(client, "-attack2");
-
-            if (ibuttons & IN_RELOAD) ClientCommand(client, "+reload");
-            else ClientCommand(client, "-reload");
-
-            // +use 使用 ibuttonsEx（下一帧，开门需要提前1tick）
-            if (ibuttonsEx & IN_USE) ClientCommand(client, "+use");
-            else ClientCommand(client, "-use");
-        }
         return;
     }
     
@@ -338,20 +319,6 @@ public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_
     // 扩展按键（下一帧）：+use 使用 ibuttonsEx（因为开门需要提前1tick）
     if (ibuttonsEx & IN_USE) ClientCommand(client, "+use");
     else ClientCommand(client, "-use");
-
-    // 真人客户端：将动作键合并进服务端按键掩码。
-    // ClientCommand 依赖客户端本机执行，对远程联机客户端不可靠（可能被
-    // cl_restrict_server_commands 拦截），联机时其他客户端会看不到按E/右键
-    // 等动作；掩码由服务端直接处理（门交互/推击/开火均为服务端判定并同步），
-    // 保证动作必然发生。帧不含该键时无需显式清除，下一 tick 客户端掩码
-    // 自然归零。ClientCommand 保留，用于播放者本机的即时预测显示。
-    if (!IsFakeClient(client))
-    {
-        if (ibuttons & IN_ATTACK) buttons |= IN_ATTACK;
-        if (ibuttons & IN_ATTACK2) buttons |= IN_ATTACK2;
-        if (ibuttons & IN_RELOAD) buttons |= IN_RELOAD;
-        if (ibuttonsEx & IN_USE) buttons |= IN_USE;
-    }
 
     // 攻击按键直接从 ibuttons（当前帧）处理，不再使用计数器。
     // 原因：用 ibuttonsEx + 计数器的方式，当播放因地图过渡等被中断时，
