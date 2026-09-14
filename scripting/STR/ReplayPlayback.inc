@@ -382,10 +382,8 @@ public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_
  * @param bOnlySetVel        是否仅设置速度。
  * @param fPlaybackTimeScale 播放时的 host_timescale 值。
  * @return                   Action 值。
- * @note                当 str_replay_stuck_repro 为 1 时，采用 MR 形式播放：
- *                      不强制 origin/velocity，通过 wishvel 注入 + 视角同步，
- *                      由引擎正常物理（摩擦+加速）产生移动，以复现斜坡蹲起卡住，
- *                      且平地/爬梯速度与真实移动一致。
+ * @note                当 str_replay_stuck_repro 为 1 时，采用类似 MR 的物理还原方式，
+ *                      不强制恢复 MOVETYPE_WALK，也不主动发送 -duck，以复现斜坡蹲起卡住。
  */
 public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], float wishangles[3],
     int& weapon, Handle hOnPlayTick, bool bPlayWhenIncapacitated, bool bPlayingToRecord,
@@ -573,14 +571,12 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
         }
         else
         {
-            bool bStuckRepro = GetConVarBool(g_ConVar_ReplayStuckRepro);
-
             // 自由视角平滑过渡（仅对真人玩家）
             if (!IsFakeClient(client))
             {
                 int curButtons = GetClientButtons(client);
                 bool bOnlySetVelConVar = view_as<bool>(GetConVarBool(FindConVar("str_onlysetvel")));
-
+                
                 if (bOnlySetVelConVar)
                 {
                     // 仅设置速度模式
@@ -591,47 +587,45 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
                 else if (!HandleAngleSmoothTransition(client, curButtons, pos, velocity, Player_GetPlaybackTimeScale(client)))
                 {
                     // 正常播放路径
-                    if (bStuckRepro)
-                    {
-                        // MR 形式：不强制 origin/velocity，注入 wishvel 由引擎物理驱动
-                        ApplyMRWishvel(client, frameinfo, viewangles, wishvel);
-                    }
-                    else
-                    {
-                        ApplyPlaybackPosition(client, frameinfo, viewangles, velocity, pos, buttons, wishvel);
-                    }
+                    ApplyPlaybackPosition(client, frameinfo, viewangles, velocity, pos, buttons);
                 }
             }
             else
             {
-                if (bStuckRepro)
+                if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
                 {
-                    // MR 形式（机器人与真人统一路径）
-                    ApplyMRWishvel(client, frameinfo, viewangles, wishvel);
+                    // 设置 wishvel 帮助引擎识别爬梯方向（模拟 MR 的做法）
+                    int ibuttons_frame = frameinfo[FRAME_Buttons];
+                    wishvel[0] = 0.0;
+                    wishvel[1] = 0.0;
+                    if (ibuttons_frame & IN_FORWARD) wishvel[0] += 450.0;
+                    if (ibuttons_frame & IN_BACK) wishvel[0] -= 450.0;
+                    if (ibuttons_frame & IN_MOVERIGHT) wishvel[1] += 450.0;
+                    if (ibuttons_frame & IN_MOVELEFT) wishvel[1] -= 450.0;
+
+                    TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
+                    DispatchKeyValueVector(client, "origin", pos);
+                }
+                else if (GetConVarBool(g_ConVar_ReplayStuckRepro))
+                {
+                    // MR 兼容模式：不强制恢复 MOVETYPE_WALK，先设置 origin，再设置速度和角度。
+                    DispatchKeyValueVector(client, "origin", pos);
+                    TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
+                    TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
                 }
                 else
                 {
-                    if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
-                    {
-                        // 设置 wishvel 帮助引擎识别爬梯方向（模拟 MR 的做法）
-                        int ibuttons_frame = frameinfo[FRAME_Buttons];
-                        wishvel[0] = 0.0;
-                        wishvel[1] = 0.0;
-                        if (ibuttons_frame & IN_FORWARD) wishvel[0] += 450.0;
-                        if (ibuttons_frame & IN_BACK) wishvel[0] -= 450.0;
-                        if (ibuttons_frame & IN_MOVERIGHT) wishvel[1] += 450.0;
-                        if (ibuttons_frame & IN_MOVELEFT) wishvel[1] -= 450.0;
-
-                        TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
-                        DispatchKeyValueVector(client, "origin", pos);
-                    }
-                    else
-                    {
-                        // 非爬梯帧恢复 MOVETYPE_WALK，防止爬梯状态残留
-                        SetEntityMoveType(client, MOVETYPE_WALK);
-                        TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
-                        DispatchKeyValueVector(client, "origin", pos);
-                    }
+                    // 非爬梯帧恢复 MOVETYPE_WALK，防止爬梯状态残留
+                    SetEntityMoveType(client, MOVETYPE_WALK);
+                    TeleportEntity(client, NULL_VECTOR, viewangles, velocity);
+                    DispatchKeyValueVector(client, "origin", pos);
+                }
+                if (GetConVarBool(g_ConVar_ReplayStuckRepro))
+                {
+                    buttons |= frameinfo[FRAME_Buttons];
+                }
+                else
+                {
                     buttons = frameinfo[FRAME_Buttons];
                 }
             }
@@ -724,38 +718,10 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
 }
 
 /**
- * @brief MR 形式播放（str_replay_stuck_repro 开启）：注入 wishvel 并同步录制视角。
- * 不强制 origin/velocity，通过 cmd 的 forwardmove/sidemove（wishvel）注入
- * 录制的移动方向，让引擎以正常物理（摩擦+加速）产生移动——平地稳态速度
- * 即真实奔跑速度，爬梯由引擎自然吸附并产生真实爬梯速度。
- * 若每 tick 强设 origin/velocity，速度会被该 tick 的摩擦衰减
- * （220 → 主机约191，远程客户端因预测修正约124），且爬梯时速度恒为 0。
- * 与 MR（sm_amovement_reader）的做法一致（PLAYER_VEL = 450.0）。
- *
- * @param client      客户端索引。
- * @param frameinfo   当前帧数据。
- * @param viewangles  录制视角（通过 TeleportEntity 同步，客户端随后携带
- *                     该视角上报 usercmd，决定 wishdir）。
- * @param wishvel     期望速度向量（可修改，注入帧按键对应的移动方向）。
- */
-static void ApplyMRWishvel(int client, any frameinfo[FRAME_Length],
-    float viewangles[3], float wishvel[3])
-{
-    int ibuttons_frame = frameinfo[FRAME_Buttons];
-    wishvel[0] = 0.0;
-    wishvel[1] = 0.0;
-    if (ibuttons_frame & IN_FORWARD) wishvel[0] += 450.0;
-    if (ibuttons_frame & IN_BACK) wishvel[0] -= 450.0;
-    if (ibuttons_frame & IN_MOVERIGHT) wishvel[1] += 450.0;
-    if (ibuttons_frame & IN_MOVELEFT) wishvel[1] -= 450.0;
-
-    TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
-}
-
-/**
- * @brief 应用播放帧的位置/角度/速度（仅非 MR 模式的真人路径）。
- * 处理爬梯模式（MOVETYPE_LADDER）的特殊逻辑：不设置 MOVETYPE/velocity，
- * 由 wishvel + 视角让引擎自然处理爬梯物理。
+ * @brief 应用播放帧的位置/角度/速度。
+ * 处理爬梯模式（MOVETYPE_LADDER）的特殊逻辑。
+ * 当 str_replay_stuck_repro 开启时，使用类似 MR 的 origin→velocity→angles
+ * 设置顺序，并且不强制恢复 MOVETYPE_WALK，以保留斜坡蹲起卡住物理状态。
  *
  * @param client      客户端索引。
  * @param frameinfo   当前帧数据。
@@ -767,24 +733,21 @@ static void ApplyMRWishvel(int client, any frameinfo[FRAME_Length],
  */
 static void ApplyPlaybackPosition(int client, any frameinfo[FRAME_Length],
     float viewangles[3], float velocity[3], float pos[3],
-    int& buttons, float wishvel[3])
+    int& buttons)
 {
     if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
     {
-        // 爬梯帧：设置 wishvel 帮助引擎识别爬梯方向（模拟 MR 的做法）。
-        // 真人的水平移动由 cmd 的 forwardmove/sidemove（wishvel）驱动，
-        // 客户端未按键时该值为 0，仅靠 buttons 掩码无法让引擎吸附梯子。
-        int ibuttons_frame = frameinfo[FRAME_Buttons];
-        wishvel[0] = 0.0;
-        wishvel[1] = 0.0;
-        if (ibuttons_frame & IN_FORWARD) wishvel[0] += 450.0;
-        if (ibuttons_frame & IN_BACK) wishvel[0] -= 450.0;
-        if (ibuttons_frame & IN_MOVERIGHT) wishvel[1] += 450.0;
-        if (ibuttons_frame & IN_MOVELEFT) wishvel[1] -= 450.0;
-
+        // 爬梯帧：不设置 MOVETYPE/velocity/wishvel，让引擎从按键+角度自然处理爬梯物理
         buttons = frameinfo[FRAME_Buttons];
         TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
         DispatchKeyValueVector(client, "origin", pos);
+    }
+    else if (GetConVarBool(g_ConVar_ReplayStuckRepro))
+    {
+        // MR 兼容模式：先放 origin，再设置速度和角度，且不强制 MOVETYPE_WALK。
+        DispatchKeyValueVector(client, "origin", pos);
+        TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
+        TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
     }
     else
     {

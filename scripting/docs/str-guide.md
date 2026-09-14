@@ -502,7 +502,7 @@ ST_STR(hPlayer, 1);
 ## 11. 注意事项
 
 1. **先加载再回放**：调用 `ST_STR(hPlayer, 1)` 之前必须先用 `ST_STR_LoadFile` 加载文件
-2. **爬梯回放**：插件根据帧按键设置 `wishvel` 方向向量（±450）帮助引擎识别爬梯意图；真人服务端水平移动由 cmd 的 forwardmove/sidemove 驱动，必须依赖该 wishvel 设置才能吸附梯子。`str_replay_stuck_repro` 开启时（MR 形式），真人/机器人统一走 wishvel 注入路径（`ApplyMRWishvel`），不强制 origin/velocity，由引擎正常物理产生移动——平地稳态速度为真实奔跑速度（220），爬梯也有真实速度；若每 tick 强设 origin/velocity，速度会被当 tick 摩擦衰减（主机约 191、远程客户端约 124），爬梯速度显示为 0
+2. **爬梯回放**：插件自动处理爬梯帧的 `MOVETYPE_LADDER` 和方向向量，FakeClient 播放正常
 3. **按键释放**：回放结束/重置时自动调用 `ResetButton` 释放所有按键，防止 `+attack` 卡死
 4. **暂停状态**：暂停时玩家位置被锁定在原点 (0, 0, 0)
 5. **自由视角**：回放时按住右键（IN_ZOOM）锁定视角观察周围，松开后 10 tick 内平滑过渡回录制视角
