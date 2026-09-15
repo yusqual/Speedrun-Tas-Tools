@@ -503,7 +503,8 @@ ST_STR(hPlayer, 1);
 
 1. **先加载再回放**：调用 `ST_STR(hPlayer, 1)` 之前必须先用 `ST_STR_LoadFile` 加载文件
 2. **爬梯回放**：插件自动处理爬梯帧的 `MOVETYPE_LADDER` 和方向向量，FakeClient 播放正常
-3. **按键释放**：回放结束/重置时自动调用 `ResetButton` 释放所有按键，防止 `+attack` 卡死
-4. **暂停状态**：暂停时玩家位置被锁定在原点 (0, 0, 0)
-5. **自由视角**：回放时按住右键（IN_ZOOM）锁定视角观察周围，松开后 10 tick 内平滑过渡回录制视角
-6. **Debug HUD 限制**：HUD_MID_BOX 区域有裁剪限制，同时显示目标过多可能导致文字被裁剪
+3. **wishvel 注入**：播放时插件根据帧按键向 `OnPlayerRunCmd` 的 wishvel 参数（`cmd->forwardmove/sidemove`）注入 ±450，保证引擎加速阶段有 wish 方向。若不注入，`TeleportEntity` 写入的速度会被当 tick 摩擦衰减至稳态（约 220×0.867≈191），fake client 与联机客户端平地速度将达不到 220（主机因本机 `+forward` 生效不受影响）。`str_onlysetvel 1` 时不注入
+4. **按键释放**：回放结束/重置时自动调用 `ResetButton` 释放所有按键，防止 `+attack` 卡死
+5. **暂停状态**：暂停时玩家位置被锁定在原点 (0, 0, 0)
+6. **自由视角**：回放时按住右键（IN_ZOOM）锁定视角观察周围，松开后 10 tick 内平滑过渡回录制视角
+7. **Debug HUD 限制**：HUD_MID_BOX 区域有裁剪限制，同时显示目标过多可能导致文字被裁剪

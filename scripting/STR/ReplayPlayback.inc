@@ -508,7 +508,26 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
     // 按键注入
     // =========================================================
     InjectPlaybackButtons(client, buttons, frameinfo, frameinfo_action, bOnlySetVel);
-    
+
+    // =========================================================
+    // wishvel 注入（cmd->forwardmove/sidemove）
+    // 仅设置 buttons / TeleportEntity 速度时，引擎本 tick 的移动代码会先
+    // 施加摩擦再根据 wishvel 加速；wishvel≈0 时速度被衰减到摩擦稳态
+    // （220 * (1 - sv_friction*tickinterval) ≈ 191），导致平地速度上不了 220。
+    // 与 MR 一致，根据帧按键直接注入 ±450 的 forwardmove/sidemove，
+    // 对 fake client 和联机真人均生效（ClientCommand +forward 只对主机可靠）。
+    // =========================================================
+    if (normalproc && !bOnlySetVel)
+    {
+        int ibuttons_frame = frameinfo[FRAME_Buttons];
+        wishvel[0] = 0.0;
+        wishvel[1] = 0.0;
+        if (ibuttons_frame & IN_FORWARD) wishvel[0] += 450.0;
+        if (ibuttons_frame & IN_BACK) wishvel[0] -= 450.0;
+        if (ibuttons_frame & IN_MOVERIGHT) wishvel[1] += 450.0;
+        if (ibuttons_frame & IN_MOVELEFT) wishvel[1] -= 450.0;
+    }
+
     // =========================================================
     // 位置/角度/速度应用
     // =========================================================
@@ -560,15 +579,8 @@ public Action HandleReplayPlayback(int client, int& buttons, float wishvel[3], f
             {
                 if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
                 {
-                    // 设置 wishvel 帮助引擎识别爬梯方向（模拟 MR 的做法）
-                    int ibuttons_frame = frameinfo[FRAME_Buttons];
-                    wishvel[0] = 0.0;
-                    wishvel[1] = 0.0;
-                    if (ibuttons_frame & IN_FORWARD) wishvel[0] += 450.0;
-                    if (ibuttons_frame & IN_BACK) wishvel[0] -= 450.0;
-                    if (ibuttons_frame & IN_MOVERIGHT) wishvel[1] += 450.0;
-                    if (ibuttons_frame & IN_MOVELEFT) wishvel[1] -= 450.0;
-
+                    // wishvel 已在上方统一注入；爬梯帧不设置 velocity，
+                    // 让引擎从按键+wishvel 自然处理爬梯物理
                     TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
                 }
                 else
@@ -682,7 +694,8 @@ static void ApplyPlaybackPosition(int client, any frameinfo[FRAME_Length],
 {
     if (frameinfo[FRAME_MOVETYPE] == MOVETYPE_LADDER)
     {
-        // 爬梯帧：不设置 MOVETYPE/velocity/wishvel，让引擎从按键+角度自然处理爬梯物理
+        // 爬梯帧：不设置 MOVETYPE/velocity（wishvel 已在 HandleReplayPlayback 统一注入），
+        // 让引擎从按键+角度自然处理爬梯物理
         buttons = frameinfo[FRAME_Buttons];
         TeleportEntity(client, NULL_VECTOR, viewangles, NULL_VECTOR);
     }
