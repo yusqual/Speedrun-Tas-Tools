@@ -307,15 +307,24 @@ public void InjectPlaybackButtons(int client, int& buttons, any frameinfo[FRAME_
     }
     
     // 扩展按键（下一帧）：+use 使用 ibuttonsEx（因为开门需要提前1tick）
-    if (ibuttonsEx & IN_USE) ClientCommand(client, "+use");
-    else ClientCommand(client, "-use");
+    // 仅对 fake client 发送 ClientCommand。真人客户端的 +use 会经
+    // "客户端本机按键状态 → usercmd" 反馈回路，比下方的掩码合并晚若干
+    // tick 再产生一个 use 上升沿；手里已持有携带物（油桶等）时，第二个
+    // 上升沿等于"再按一次E"，导致先拾取后丢弃（慢速时错位更大更明显）。
+    // 真人客户端只保留掩码合并，由服务端权威处理拾取/开门。
+    if (IsFakeClient(client))
+    {
+        if (ibuttonsEx & IN_USE) ClientCommand(client, "+use");
+        else ClientCommand(client, "-use");
+    }
 
     // 真人客户端：将动作键合并进服务端按键掩码。
     // ClientCommand 依赖客户端本机执行，对远程联机客户端不可靠（可能被
     // cl_restrict_server_commands 拦截），联机时其他客户端会看不到按E/右键
     // 等动作；掩码由服务端直接处理（门交互/推击/开火均为服务端判定并同步），
     // 保证动作必然发生。帧不含该键时无需显式清除，下一 tick 客户端掩码
-    // 自然归零。ClientCommand 保留，用于播放者本机的即时预测显示。
+    // 自然归零。注意 +use 不再对真人客户端发送 ClientCommand（见上方注释，
+    // 双路径会产生第二个 use 上升沿导致携带物被丢弃）。
     if (!IsFakeClient(client))
     {
         if (ibuttons & IN_ATTACK) buttons |= IN_ATTACK;
